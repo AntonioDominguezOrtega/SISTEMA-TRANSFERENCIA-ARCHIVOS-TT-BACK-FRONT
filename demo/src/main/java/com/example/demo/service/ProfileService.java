@@ -117,7 +117,7 @@ public class ProfileService {
 
             log.info("Foto de perfil actualizada para usuario: {}", user.getUsername());
 
-            return photoUrl;
+            return getProfilePictureWithSas(photoUrl); 
 
         } catch (Exception e) {
             log.error("Error al subir foto de perfil: {}", e.getMessage());
@@ -310,6 +310,21 @@ public class ProfileService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
+    private String getProfilePictureWithSas(String rawUrl) {
+        // Si no tiene foto, no hacemos nada
+        if (rawUrl == null || rawUrl.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            // Generamos un token SAS válido por 2 horas (120 minutos)
+            // Cuando este tiempo expire, la URL dejará de funcionar automáticamente.
+            return azureBlobService.generateSasToken(rawUrl, 120);
+        } catch (Exception e) {
+            log.error("Error al generar SAS token para foto: {}", e.getMessage());
+            return rawUrl; // Respaldo
+        }
+    }
+
     private Long calculateStorageUsed(User user) {
         // Sumar el tamaño de todos los archivos personales del usuario
         Long total = fileMetadataRepository.findByUploadedBy(user)
@@ -350,7 +365,7 @@ public class ProfileService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(getProfilePictureWithSas(user.getProfilePictureUrl()))
                 .storageUsed(storageUsed)
                 .storageLimit(STORAGE_LIMIT)
                 .storageUsedPercent(Math.min(100.0, (storageUsed.doubleValue() / STORAGE_LIMIT) * 100))
@@ -368,7 +383,7 @@ public class ProfileService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(getProfilePictureWithSas(user.getProfilePictureUrl()))
                 .isContact(isContact)
                 .build();
     }
@@ -383,7 +398,7 @@ public class ProfileService {
                 .username(contactUser.getUsername())
                 .email(contactUser.getEmail())
                 .phone(contactUser.getPhone())
-                .profilePictureUrl(contactUser.getProfilePictureUrl())
+                .profilePictureUrl(getProfilePictureWithSas(contactUser.getProfilePictureUrl()))
                 .addedAt(contact.getAddedAt())
                 .build();
     }
