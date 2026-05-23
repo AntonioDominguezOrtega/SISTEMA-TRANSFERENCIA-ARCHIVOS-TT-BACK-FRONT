@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.FileShareResponse;
 import com.example.demo.dto.FileUploadRequest;
+import com.example.demo.dto.ShareExistingFileRequest;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -126,6 +127,32 @@ public class FileShareService {
         return responses;
     }
 
+    @Transactional
+    public List<FileShareResponse> shareExistingFiles(ShareExistingFileRequest request) {
+        User currentUser = getCurrentUser();
+        FileMetadata file = fileMetadataRepository.findById(request.getFileId())
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        validateSecurityLevel(request);
+
+        List<FileShareResponse> responses = new ArrayList<>();
+
+        for (ShareExistingFileRequest.RecipientInfo recipient : request.getRecipients()) {
+            User targetUser = findUserByIdentifier(recipient);
+
+            if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser)) {
+                continue;
+            }
+
+            FileShare share = createFileShare(file, currentUser, targetUser, request);
+            FileShare savedShare = fileShareRepository.save(share);
+            sendSharingNotifications(savedShare, request);
+            logAccess(currentUser, file, savedShare, AccessAction.SHARE, true, null);
+            responses.add(mapToResponse(savedShare));
+        }
+        return responses;
+    }
+
     // =========================================================================================
     // 2. BANDEJAS DE ENTRADA Y SALIDA
     // =========================================================================================
@@ -169,7 +196,7 @@ public class FileShareService {
             throw new RuntimeException("El archivo a expirado");
         }
 
-        if (share.getIsUnlocked() && share.getUnlockedUntil().isAfter(LocalDateTime.now())) {
+        if (Boolean.TRUE.equals(share.getIsUnlocked()) && share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now())) {
             throw new RuntimeException("El archivo ya esta desbloqueado hasta: " + share.getUnlockedUntil());
         }
 
@@ -261,7 +288,8 @@ public class FileShareService {
         FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
-        if (share.getSmsAttempts() >= MAX_SMS_ATTEMPTS) {
+        Integer tokenAttempts = share.getSmsAttempts() != null ? share.getSmsAttempts() : 0;
+        if (tokenAttempts >= MAX_SMS_ATTEMPTS) {
             throw new RuntimeException("Demasiados intentos fallidos. Solicite un nuevo token");
         }
 
@@ -271,7 +299,7 @@ public class FileShareService {
 
         // ¿El código es incorrecto?
         if (!token.equals(share.getCurrentSmsToken())) {
-            share.setSmsAttempts(share.getSmsAttempts() + 1);
+            share.setSmsAttempts(tokenAttempts + 1);
             share.setSmsLastAttemptAt(LocalDateTime.now());
             fileShareRepository.save(share);
 
@@ -302,23 +330,31 @@ public class FileShareService {
     @Transactional
     public FileShareResponse viewFile(String shareId) {
         User currentUser = getCurrentUser();
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
-                .orElseThrow(() -> new RuntimeException("Archivoo no encontrado"));
+    
+    // 🌟 LOG PARA DEPURAR: Ver qué IDs estamos usando
+    log.info("Intento de acceso - Usuario: {}, ShareID: {}", currentUser.getUsername(), shareId);
 
-        validateFileAcces(share);
+    FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
+            .orElseThrow(() -> {
+                // 🌟 CORREGIDO: "Archivo no encontrado" (con una 'o')
+                log.error("Fallo de acceso: No se encontró registro para shareId: {} y usuario: {}", shareId, currentUser.getUsername());
+                return new RuntimeException("Archivo no encontrado");
+            });
 
-        // Incrementar estadisticas
-        share.setViewCount(share.getViewCount() + 1);
-        share.setLastViewedAt(LocalDateTime.now());
-        fileShareRepository.save(share);
+    validateFileAcces(share);
 
-        logAccess(currentUser, share.getFile(), share, AccessAction.VIEW, true, null);
+    // Incrementar estadísticas
+    share.setViewCount(share.getViewCount() + 1);
+    share.setLastViewedAt(LocalDateTime.now());
+    fileShareRepository.save(share);
 
-        if (share.getNotifyOnview()) {
-            sendViewNotification(share);
-        }
-        return mapToResponse(share);
+    logAccess(currentUser, share.getFile(), share, AccessAction.VIEW, true, null);
+
+    if (share.getNotifyOnview()) {
+        sendViewNotification(share);
     }
+    return mapToResponse(share);
+}
 
     @Transactional
     public String downloadFile(String shareId) {
@@ -333,7 +369,7 @@ public class FileShareService {
             throw new RuntimeException("No tienes permiso para descargar este archivo");
         }
 
-        share.setDownloadCount(share.getDownloadCount() + 1);
+        share.setDownloadCount((share.getDownloadCount() != null ? share.getDownloadCount() : 0) + 1);
         share.setLastDownloadedAt(LocalDateTime.now());
         fileShareRepository.save(share);
 
@@ -342,7 +378,7 @@ public class FileShareService {
 
         logAccess(currentUser, share.getFile(), share, AccessAction.DOWNLOAD, true, null);
 
-        if (share.getNotifyOnDownload()) {
+        if (Boolean.TRUE.equals(share.getNotifyOnDownload())) {
             sendDonwloadNotification(share);
         }
         return downloadUrl;
@@ -414,6 +450,17 @@ public class FileShareService {
         };
     }
 
+    private User findUserByIdentifier(ShareExistingFileRequest.RecipientInfo recipient) {
+        return switch (recipient.getType()) {
+            case EMAIL -> userRepository.findByEmail(recipient.getIdentifier())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado con email " + recipient.getIdentifier()));
+            case USERNAME -> userRepository.findByUsername(recipient.getIdentifier())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado con username " + recipient.getIdentifier()));
+            case PHONE -> userRepository.findByPhone(recipient.getIdentifier())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado con telefono " + recipient.getIdentifier()));
+        };
+    }
+
     // Reglas de negocio de la seguridad de los archivos
     private void validateSecurityLevel(FileUploadRequest request) {
 
@@ -431,6 +478,26 @@ public class FileShareService {
         }
 
         // Reglas de negocio para seguridad con SMS del archivo
+        if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
+            if (!request.getUseAccountPhone() && request.getCustomPhoneNumber() == null) {
+                throw new RuntimeException("Debe especificar un numero de telefono allternativo");
+            }
+        }
+    }
+
+    private void validateSecurityLevel(ShareExistingFileRequest request) {
+        if (request.getSecurityLevel() == SecurityLevel.PASSWORD) {
+            if (request.getPassword() == null || request.getConfirmPassword() == null) {
+                throw new RuntimeException("Debe especificar una contraseña");
+            }
+            if (!request.getPassword().equals(request.getConfirmPassword())) {
+                throw new RuntimeException("La contraseña no coinciden");
+            }
+            if (request.getPassword().length() < 8) {
+                throw new RuntimeException("La contraseña debe de tener al menos 8 caracteres");
+            }
+        }
+
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
             if (!request.getUseAccountPhone() && request.getCustomPhoneNumber() == null) {
                 throw new RuntimeException("Debe especificar un numero de telefono allternativo");
@@ -466,7 +533,44 @@ public class FileShareService {
         return share;
     }
 
+    private FileShare createFileShare(FileMetadata file, User sharedBy, User sharedWith, ShareExistingFileRequest request) {
+        FileShare share = new FileShare();
+        share.setFile(file);
+        share.setSharedBy(sharedBy);
+        share.setSharedWith(sharedWith);
+        share.setSubject(request.getSubject());
+        share.setSharedAt(LocalDateTime.now());
+        share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
+        share.setAccessLevel(request.getAccessLevel());
+        share.setSecurityLevel(request.getSecurityLevel());
+        share.setNotifyOnview(request.getNotifyOnView());
+        share.setNotifyOnDownload(request.getNotifyOnDownload());
+        share.setSelfDestruct(request.getSelfDestruct());
+        share.setIsActive(true);
+        share.setIsUnlocked(false);
+
+        if (request.getSecurityLevel() == SecurityLevel.PASSWORD) {
+            share.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+        if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
+            share.setUseCustomPhone(request.getUseAccountPhone());
+            share.setCustomPhoneNumber(request.getCustomPhoneNumber());
+        }
+
+        return share;
+    }
+
     private LocalDateTime calculateExpiration (FileUploadRequest.ExpirationTime expirationTime) {
+        return switch (expirationTime) {
+            case HOURS_24 -> LocalDateTime.now().plusHours(24);
+            case DAYS_3 -> LocalDateTime.now().plusDays(3);
+            case DAYS_7 -> LocalDateTime.now().plusDays(7);
+            case MONTH_1 -> LocalDateTime.now().plusMonths(1);
+            case CUSTOM -> LocalDateTime.now().plusDays(30);
+        };
+    }
+
+    private LocalDateTime calculateExpiration (ShareExistingFileRequest.ExpirationTime expirationTime) {
         return switch (expirationTime) {
             case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
@@ -495,7 +599,7 @@ public class FileShareService {
             if (xfHeader == null || xfHeader.isEmpty() || !xfHeader.contains(request.getRemoteAddr())) {
                 return request.getRemoteAddr();
             }
-            return xfHeader.split(".")[0]; // Toma la IP original si hay proxies
+            return xfHeader.split(",")[0].trim(); // Toma la IP original si hay proxies
         } catch (Exception e) {
             return "IP-Desconocida";
         }
@@ -526,11 +630,11 @@ public class FileShareService {
     // --- LÓGICA DE NOTIFICACIONES ---
 
     private void sendSharingNotifications(FileShare share, FileUploadRequest request) {
-        String content = String.format("%s %s te ha compartido el archivo: %s\\nNivel de seguridad: %s\\nExpira: %s\\n\\nInicia sesión en la plataforma para verlo.",
+        String content = String.format("%s %s te ha compartido el archivo: %s\nNivel de seguridad: %s\nExpira: %s\n\nInicia sesión en la plataforma para verlo.",
                 share.getSharedBy().getNombre(), share.getSharedBy().getApellido(), share.getFile().getFileName(), share.getSecurityLevel(), share.getExpiresAt());
 
         if (request.getMessage() != null && !request.getMessage().isEmpty()) {
-            content += "\\n\\nMensaje: " + request.getMessage();
+            content += "\n\nMensaje: " + request.getMessage();
         }
 
         emailService.sendSimpleMessage(share.getSharedWith().getEmail(), "Te compartio un archivo", content);
@@ -545,6 +649,27 @@ public class FileShareService {
         Notification savedNotification = notificationRepository.save(notification);
 
         // 2. Disparamos la alerta en tiempo real a la campanita de React
+        webSocketService.sendToUser(share.getSharedWith(), savedNotification);
+    }
+
+    private void sendSharingNotifications(FileShare share, ShareExistingFileRequest request) {
+        String content = String.format("%s %s te ha compartido el archivo: %s\nNivel de seguridad: %s\nExpira: %s\n\nInicia sesión en la plataforma para verlo.",
+                share.getSharedBy().getNombre(), share.getSharedBy().getApellido(), share.getFile().getFileName(), share.getSecurityLevel(), share.getExpiresAt());
+
+        if (request.getMessage() != null && !request.getMessage().isEmpty()) {
+            content += "\n\nMensaje: " + request.getMessage();
+        }
+
+        emailService.sendSimpleMessage(share.getSharedWith().getEmail(), "Te compartio un archivo", content);
+
+        Notification notification = new Notification();
+        notification.setUser(share.getSharedWith());
+        notification.setFileShare(share);
+        notification.setType(NotificationType.NEW_FILE_SHARED);
+        notification.setMessage("Te compartieron: " + share.getFile().getFileName());
+
+        Notification savedNotification = notificationRepository.save(notification);
+
         webSocketService.sendToUser(share.getSharedWith(), savedNotification);
     }
 

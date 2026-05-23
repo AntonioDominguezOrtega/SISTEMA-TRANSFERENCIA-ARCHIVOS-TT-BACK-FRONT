@@ -1,8 +1,10 @@
 HELP.md
 target/
-.mvn/wrapper/maven-wrapper.jar
+*.jar
+*.war
 !**/src/main/**/target/
 !**/src/test/**/target/
+*.properties
 
 ### STS ###
 .apt_generated
@@ -18,6 +20,8 @@ target/
 *.iws
 *.iml
 *.ipr
+*.swp
+*.swo
 
 ### NetBeans ###
 /nbproject/private/
@@ -31,3 +35,15 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Ignora todos los directorios y archivos en este nivel
+**/*

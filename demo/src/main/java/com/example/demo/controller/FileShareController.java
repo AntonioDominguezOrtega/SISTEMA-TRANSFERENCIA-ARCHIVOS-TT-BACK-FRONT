@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.FileShareResponse;
 import com.example.demo.dto.FileUploadRequest;
+import com.example.demo.dto.ShareExistingFileRequest;
 import com.example.demo.service.FileShareService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.awt.*;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
+
 public class FileShareController {
 
     private final FileShareService fileShareService;
@@ -28,24 +29,47 @@ public class FileShareController {
     // =========================================================================
 
     /**
-     * Sube y comparte archivos.
-     * CORRECCIÓN DE ARQUITECTURA: Se usa @RequestPart para separar los archivos binarios
-     * de los datos en JSON. Esta es la única forma confiable de enviar ambos desde React.
+     * Sube y comparte archivos NUEVOS.
+     * Usa @RequestPart para separar los archivos binarios de los datos en JSON.
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> uploadAndShareFiles(
-            @RequestPart("files") List<MultipartFile> files,  // Parte 1: Los binarios (PDF, imágenes)
-            @Valid @RequestPart("request")FileUploadRequest request  // Parte 2: El JSON con los destinatarios y permisos
+            @RequestPart("files") List<MultipartFile> files,  
+            @Valid @RequestPart("request") FileUploadRequest request  
     ) {
         try {
             // Unimos los archivos al request antes de mandarlos al servicio
             request.setFiles(files);
-
             List<FileShareResponse> responses = fileShareService.uploadAndShareFiles(request);
 
             return ResponseEntity.ok(Map.of(
-               "message", "Archivo compartido exitosamente",
+                    "message", "Archivo cifrado y compartido exitosamente",
+                    "files", responses
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // =========================================================================
+    // 1.5. COMPARTIR ARCHIVOS EXISTENTES (Archivos de la Nube)
+    // =========================================================================
+
+    /**
+     * Comparte archivos que el usuario ya había subido a Azure previamente.
+     * Como no hay binarios nuevos, solo recibimos el JSON normal.
+     */
+    @PostMapping(value = "/share-existing", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> shareExistingFiles(
+            @Valid @RequestBody ShareExistingFileRequest request
+    ) {
+        try {
+            List<FileShareResponse> responses = fileShareService.shareExistingFiles(request);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Archivos de la nube compartidos exitosamente",
                     "files", responses
             ));
         } catch (Exception e) {
@@ -59,7 +83,6 @@ public class FileShareController {
 
     /**
      * Obtener archivos que ME HAN ENVIADO (Bandeja de entrada)
-     * Paginado para que no cargue miles de registros de golpe.
      */
     @GetMapping("/received")
     @PreAuthorize("hasRole('USER')")
@@ -99,12 +122,11 @@ public class FileShareController {
     }
 
     // =========================================================================
-    // 3. FLUJO DE SEGURIDAD (TOKEN SMS)
+    // 3. FLUJO DE SEGURIDAD (TOKEN SMS) Y CONTRASEÑA
     // =========================================================================
 
     /**
      * Solicitar token SMS para desbloquear archivo.
-     * Genera el token, lo guarda 5 mins y lo envía a Twilio.
      */
     @PostMapping("/{shareId}/request-token")
     @PreAuthorize("hasRole('USER')")
@@ -122,7 +144,6 @@ public class FileShareController {
 
     /**
      * Verificar token SMS ingresado por el usuario.
-     * Si es correcto, otorga una "ventana" de 24 horas de acceso.
      */
     @PostMapping("/{shareId}/verify-token")
     @PreAuthorize("hasRole('USER')")
@@ -142,66 +163,8 @@ public class FileShareController {
         }
     }
 
-    // =========================================================================
-    // 4. ACCIONES SOBRE EL ARCHIVO (Ver y Descargar)
-    // =========================================================================
-
     /**
-     * Ver archivo (solo lectura en pantalla).
-     * Incrementa contador de vistas y notifica al dueño (si lo configuró).
-     */
-    @GetMapping("/{shareId}/view")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> viewFile(@PathVariable String shareId) {
-        try {
-            FileShareResponse response = fileShareService.viewFile(shareId);
-            return ResponseEntity.ok(Map.of(
-                    "file", response,
-                    "message", "Acceso restringido"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Descargar archivo (físico a la computadora).
-     * Retorna el Link mágico de Azure para que React dispare la descarga.
-     */
-    @GetMapping("/{shareId}/download")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> downloadFile(@PathVariable String shareId) {
-        try {
-            String downloadUrl = fileShareService.downloadFile(shareId);
-            return ResponseEntity.ok(Map.of(
-                    "downloadUrl", downloadUrl,
-                    "message", "URL de descarga generada (valida por 1 hora)"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Obtener detalle de un archivo específico sin alterar contadores.
-     * Útil para cuando abres el modal y quieres ver la metadata del archivo.
-     */
-    @GetMapping("/{shareId}")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> getFileDetails(@PathVariable String shareId) {
-        try {
-            // Crear despues el servicio 'getFileDetails'.
-            // Por ahora solo es un esqueleto de respuesta.
-            return ResponseEntity.ok(Map.of("shareId", shareId));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * VERIFICAR CONTRASEÑA PARA DESBLOQUEAR ARCHIVO
-     * Endpoint: POST /api/files/{shareId}/verify-password
-     * Body: { "password": "miContraseña123" }
+     * Verificar contraseña para desbloquear archivo.
      */
     @PostMapping("/{shareId}/verify-password")
     @PreAuthorize("hasRole('USER')")
@@ -216,11 +179,61 @@ public class FileShareController {
             }
 
             FileShareResponse response = fileShareService.verifyPassword(shareId, password);
-
             return ResponseEntity.ok(Map.of(
-                    "message", "Archivo desbloqueado exitosamente por 24 horas",
+                    "message", "Archivo desbloqueado exitosamente",
                     "file", response
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // =========================================================================
+    // 4. ACCIONES SOBRE EL ARCHIVO (Ver y Descargar)
+    // =========================================================================
+
+    /**
+     * Ver archivo (solo lectura en pantalla).
+     */
+    @GetMapping("/{shareId}/view")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> viewFile(@PathVariable String shareId) {
+        try {
+            FileShareResponse response = fileShareService.viewFile(shareId);
+            return ResponseEntity.ok(Map.of(
+                    "file", response,
+                    "message", "Acceso registrado"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Descargar archivo (físico a la computadora).
+     */
+    @GetMapping("/{shareId}/download")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> downloadFile(@PathVariable String shareId) {
+        try {
+            String downloadUrl = fileShareService.downloadFile(shareId);
+            return ResponseEntity.ok(Map.of(
+                    "downloadUrl", downloadUrl,
+                    "message", "URL de descarga generada (válida por 1 hora)"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Obtener detalle de un archivo específico sin alterar contadores.
+     */
+    @GetMapping("/{shareId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> getFileDetails(@PathVariable String shareId) {
+        try {
+            return ResponseEntity.ok(Map.of("shareId", shareId)); // Temporal hasta crear el servicio real
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
