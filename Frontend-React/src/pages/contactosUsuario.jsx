@@ -1,59 +1,113 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
-
-// 🌟 BASE DE DATOS LOCAL SIMULADA (Usuarios globales de la plataforma Capara)
-const baseUsuariosPlataforma = [
-  { id: 'u-1', nombre: 'José Manuel', apellidos: 'Pérez Gómez', email: 'jose.perez@escom.ipn.mx', tel: '5511112222', iniciales: 'JP', alias: 'Jose Pérez' },
-  { id: 'u-2', nombre: 'José Antonio', apellidos: 'Rodríguez Silva', email: 'jantonio.silva@escom.ipn.mx', tel: '5533334444', iniciales: 'JR', alias: 'Toño Silva' },
-  { id: 'u-3', nombre: 'María José', apellidos: 'López Hernández', email: 'mariajose@gmail.com', tel: '5555556666', iniciales: 'ML', alias: 'Majo López' },
-  { id: 'u-4', nombre: 'Héctor Alejandro', apellidos: 'Hernández Aranda', email: 'hector.hernandez@escom.ipn.mx', tel: '5577778888', iniciales: 'HH', alias: 'Héctor' },
-  { id: 'u-5', nombre: 'José de Jesús', apellidos: 'Martínez Ruíz', email: 'chuy.martinez@gmail.com', tel: '5599990000', iniciales: 'JJ', alias: 'Chuy' },
-];
+import profileService from '../services/profileService'
 
 export default function ContactosUsuario() {
   const navigate = useNavigate();
 
-  // 1. ESTADOS: Tus amigos/contactos ya agregados a tu red personal
-  const [misContactos, setMisContactos] = useState([
-    { id: 'u-7', nombre: 'Ambar Stephania García Gaspar', email: 'ambar.garcia@ejemplo.com', tel: '5512345678', iniciales: 'AG', alias: 'Ambar' },
-    { id: 'u-6', nombre: 'Antonio de Jesús Domínguez Ortega', email: 'antonio.dominguez@ejemplo.com', tel: '5587654321', iniciales: 'AD', alias: 'Toño' },
-  ]);
+  // 1. ESTADOS
+  const [misContactos, setMisContactos] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const [busquedaMisContactos, setBusquedaMisContactos] = useState(''); // Barra exterior (Filtra mis amigos)
-  const [inputBusquedaGlobal, setInputBusquedaGlobal] = useState(''); // Input dentro del Modal Flotante
+  // Estados de Búsqueda
+  const [busquedaMisContactos, setBusquedaMisContactos] = useState(''); 
+  const [inputBusquedaGlobal, setInputBusquedaGlobal] = useState(''); 
   const [showModalBusqueda, setShowModalBusqueda] = useState(false);
-
-  // 2. LÓGICA DE FILTRADO (Barra principal: filtra los amigos que YA agregué)
-  const contactosFiltrados = misContactos.filter(c => 
-    c.nombre.toLowerCase().includes(busquedaMisContactos.toLowerCase()) ||
-    c.alias.toLowerCase().includes(busquedaMisContactos.toLowerCase())
-  );
-
-  // 3. 🌟 FILTRADO EN TIEMPO REAL DENTRO DEL MODAL (Evita el error de useEffect y ESLint)
-  const busquedaLimpiaGlobal = inputBusquedaGlobal.trim().toLowerCase();
   
-  const resultadosFiltradosGlobal = busquedaLimpiaGlobal.length >= 2
-    ? baseUsuariosPlataforma.filter(usuario => 
-        (usuario.nombre.toLowerCase().includes(busquedaLimpiaGlobal) ||
-        usuario.apellidos.toLowerCase().includes(busquedaLimpiaGlobal) ||
-        usuario.email.toLowerCase().includes(busquedaLimpiaGlobal)) &&
-        !misContactos.some(existente => existente.id === usuario.id) // Oculta a los que ya son amigos
-      )
-    : [];
+  // Resultados del Directorio Global traídos del Backend
+  const [resultadosFiltradosGlobal, setResultadosFiltradosGlobal] = useState([]);
+  const [buscandoGlobal, setBuscandoGlobal] = useState(false);
 
-  // 4. FUNCIÓN PARA AGREGAR DESDE EL MODAL FLOTANTE
-  const handleAgregarContacto = (usuario) => {
-    setMisContactos([...misContactos, usuario]);
-    setInputBusquedaGlobal('');
-    setShowModalBusqueda(false);
-    alert(`@${usuario.alias} se ha enlazado exitosamente a tu red segura.`);
+  // 2. CARGAR MIS CONTACTOS AL INICIAR
+  const cargarMisContactos = () => {
+    setCargando(true);
+    profileService.getMyContacts()
+      .then(response => {
+        // Tu backend devuelve la lista dentro de "contacts"
+        setMisContactos(response.data.contacts || []);
+        setCargando(false);
+      })
+      .catch(error => {
+        console.error("Error al cargar contactos:", error);
+        setCargando(false);
+      });
   };
 
-  const eliminarAmigo = (id) => {
-    if(window.confirm('¿Eliminar de tu lista de contactos frecuentes?')) {
-      setMisContactos(misContactos.filter(c => c.id !== id));
+  useEffect(() => {
+    cargarMisContactos();
+  }, []);
+
+  // 3. FILTRADO LOCAL (Barra principal: filtra los amigos que YA agregué)
+  const contactosFiltrados = misContactos.filter(c => {
+    const nombreCompleto = `${c.nombre} ${c.apellido || ''}`.toLowerCase();
+    const alias = (c.username || '').toLowerCase();
+    const query = busquedaMisContactos.toLowerCase();
+    return nombreCompleto.includes(query) || alias.includes(query);
+  });
+
+  // 4. BÚSQUEDA EN TIEMPO REAL EN EL BACKEND (Modal Global)
+  useEffect(() => {
+    const query = inputBusquedaGlobal.trim();
+    
+    if (query.length >= 2) {
+      setBuscandoGlobal(true);
+      
+      // Usamos un "Timeout" (Debounce) de 500ms para no saturar el backend con cada tecla pulsada
+      const delayBusqueda = setTimeout(() => {
+        profileService.searchGlobalUsers(query)
+          .then(response => {
+            // El backend devuelve "results". 
+            // Filtramos a los que ya son contactos (isContact === true) para no mostrarlos
+            const usuariosEncontrados = (response.data.results || []).filter(u => !u.isContact);
+            setResultadosFiltradosGlobal(usuariosEncontrados);
+            setBuscandoGlobal(false);
+          })
+          .catch(error => {
+            console.error("Error en búsqueda global:", error);
+            setBuscandoGlobal(false);
+          });
+      }, 500);
+
+      return () => clearTimeout(delayBusqueda); // Limpiamos el timeout si el usuario sigue escribiendo
+    } else {
+      setResultadosFiltradosGlobal([]);
     }
+  }, [inputBusquedaGlobal]);
+
+  // 5. AGREGAR UN CONTACTO
+  const handleAgregarContacto = (usuario) => {
+    profileService.addContact(usuario.id)
+      .then(response => {
+        alert(`@${usuario.username || usuario.nombre} se ha enlazado exitosamente a tu red segura.`);
+        setInputBusquedaGlobal('');
+        setShowModalBusqueda(false);
+        cargarMisContactos(); // Recargamos la lista para que aparezca
+      })
+      .catch(error => {
+        alert(error.response?.data?.error || "Ocurrió un error al agregar el contacto.");
+      });
+  };
+
+  // 6. ELIMINAR UN CONTACTO
+  const eliminarAmigo = (contacto) => {
+    if(window.confirm(`¿Estás seguro de eliminar a ${contacto.nombre} de tu lista de contactos?`)) {
+      // Usamos el contactId que nos manda el backend
+      profileService.removeContact(contacto.contactId)
+        .then(() => {
+          // Lo quitamos de la vista inmediatamente
+          setMisContactos(misContactos.filter(c => c.contactId !== contacto.contactId));
+        })
+        .catch(error => {
+          alert("Error al intentar eliminar el contacto.");
+        });
+    }
+  };
+
+  // Función auxiliar para extraer iniciales de forma segura
+  const obtenerIniciales = (nombre) => {
+    if (!nombre) return "U";
+    return nombre.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -86,55 +140,77 @@ export default function ContactosUsuario() {
           </section>
 
           {/* Grid de tarjetas de mis contactos */}
-          <div className="contacts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {contactosFiltrados.map((contacto) => (
-              <article key={contacto.id} className="benefit-box shadow-sm card-glow-plop" style={{ textAlign: 'left', padding: '1.5rem', border: '1px solid rgba(10, 63, 255, 0.4)', borderRadius: '12px', backgroundColor: '#1D263C', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ 
-                      width: '52px', height: '52px', backgroundColor: 'var(--color-accent)', 
-                      color: 'var(--color-dark)', borderRadius: '50%', display: 'flex', 
-                      alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem'
-                    }}>
-                      {contacto.iniciales}
+          {cargando ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>Cargando contactos...</div>
+          ) : (
+            <>
+              <div className="contacts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {contactosFiltrados.map((contacto) => (
+                  <article key={contacto.contactId} className="benefit-box shadow-sm card-glow-plop" style={{ textAlign: 'left', padding: '1.5rem', border: '1px solid rgba(10, 63, 255, 0.4)', borderRadius: '12px', backgroundColor: '#1D263C', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        
+                        <div style={{ 
+                          width: '52px', height: '52px', backgroundColor: 'var(--color-accent)', 
+                          color: 'var(--color-dark)', borderRadius: '50%', display: 'flex', 
+                          alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem',
+                          overflow: 'hidden'
+                        }}>
+                          {contacto.profilePictureUrl ? (
+                            <img src={contacto.profilePictureUrl} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            obtenerIniciales(contacto.nombre)
+                          )}
+                        </div>
+
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {contacto.username || 'Sin alias'}
+                          </h3>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-medium)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {`${contacto.nombre} ${contacto.apellido || ''}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="contact-meta" style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--color-text-light)' }}>
+                        <p style={{ margin: '4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <strong>Correo:</strong> {contacto.email}
+                        </p>
+                        <p style={{ margin: '4px 0' }}>
+                          <strong>Teléfono:</strong> {contacto.phone || 'No registrado'}
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '600' }}>{contacto.alias}</h3>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-medium)' }}>{contacto.nombre}</p>
+
+                    <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }}
+                        // 🌟 Aquí usamos userId, que es el ID del usuario en sí, no el ID de la relación de contacto
+                        onClick={() => navigate(`/subir-archivo?to=${contacto.userId}`)}
+                      >
+                        Enviar Archivo
+                      </button>
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ padding: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}
+                        title="Quitar de mi lista"
+                        onClick={() => eliminarAmigo(contacto)}
+                      >
+                        🗑️
+                      </button>
                     </div>
-                  </div>
+                  </article>
+                ))}
+              </div>
 
-                  <div className="contact-meta" style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--color-text-light)' }}>
-                    <p style={{ margin: '4px 0' }}><strong>Correo:</strong> {contacto.email}</p>
-                    <p style={{ margin: '4px 0' }}><strong>Teléfono:</strong> {contacto.tel}</p>
-                  </div>
+              {contactosFiltrados.length === 0 && !cargando && (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
+                  No se encontraron contactos en tu red personal.
                 </div>
-
-                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-                  <button 
-                    className="btn btn-primary" 
-                    style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }}
-                    onClick={() => navigate(`/subir-archivo?to=${contacto.id}`)}
-                  >
-                    Enviar Archivo
-                  </button>
-                  <button 
-                    className="btn btn-secondary" 
-                    style={{ padding: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}
-                    title="Quitar de mi lista"
-                    onClick={() => eliminarAmigo(contacto.id)}
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          {contactosFiltrados.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
-              No se encontraron contactos en tu red personal.
-            </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -171,7 +247,7 @@ export default function ContactosUsuario() {
                 <input 
                   type="text" 
                   className="form-control-modern" 
-                  placeholder="Escribe un nombre (ej. jose)..." 
+                  placeholder="Escribe un nombre o correo..." 
                   required
                   style={{ width: '100%', paddingLeft: '45px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
                   value={inputBusquedaGlobal}
@@ -180,29 +256,43 @@ export default function ContactosUsuario() {
               </div>
             </div>
 
-            {/* CAJA DINÁMICA DE RESULTADOS DENTRO DEL FLOTANTE */}
+            {/* CAJA DINÁMICA DE RESULTADOS */}
             <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '20px', textAlign: 'left' }}>
               
+              {buscandoGlobal && (
+                <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--color-text-medium)' }}>
+                  Buscando en el servidor...
+                </div>
+              )}
+
               {/* Caso A: Se encontraron usuarios */}
-              {resultadosFiltradosGlobal.length > 0 && (
+              {!buscandoGlobal && resultadosFiltradosGlobal.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {resultadosFiltradosGlobal.map(usuario => (
                     <div 
                       key={usuario.id}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: 'var(--color-dark)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                          {usuario.iniciales}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem', overflow: 'hidden' }}>
+                          {usuario.profilePictureUrl ? (
+                            <img src={usuario.profilePictureUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            obtenerIniciales(usuario.nombre)
+                          )}
                         </div>
-                        <div>
-                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white', fontWeight: '600' }}>{usuario.nombre}</h4>
-                          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-medium)' }}>{usuario.email}</p>
+                        <div style={{ overflow: 'hidden' }}>
+                          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'white', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {`${usuario.nombre} ${usuario.apellido || ''}`}
+                          </h4>
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-medium)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {usuario.email}
+                          </p>
                         </div>
                       </div>
                       <button
                         onClick={() => handleAgregarContacto(usuario)}
-                        style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}
+                        style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0 }}
                       >
                         ＋
                       </button>
@@ -212,14 +302,14 @@ export default function ContactosUsuario() {
               )}
 
               {/* Caso B: El usuario tecleó pero no hay coincidencias */}
-              {busquedaLimpiaGlobal.length >= 2 && resultadosFiltradosGlobal.length === 0 && (
+              {!buscandoGlobal && inputBusquedaGlobal.trim().length >= 2 && resultadosFiltradosGlobal.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-medium)', fontSize: '0.9rem' }}>
                   No se encontraron usuarios que coincidan.
                 </div>
               )}
 
               {/* Caso C: Estado inicial del modal */}
-              {busquedaLimpiaGlobal.length < 2 && (
+              {inputBusquedaGlobal.trim().length < 2 && (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-medium)', fontSize: '0.85rem', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '8px' }}>
                   Escribe al menos 2 letras para consultar el directorio corporativo.
                 </div>

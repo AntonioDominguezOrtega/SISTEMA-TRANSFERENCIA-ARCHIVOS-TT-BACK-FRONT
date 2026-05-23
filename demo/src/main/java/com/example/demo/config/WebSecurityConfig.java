@@ -137,12 +137,21 @@ public class WebSecurityConfig {
      * CONFIGURACIÓN CORS (Cross-Origin Resource Sharing)
      * Define quién puede hablar con nuestra API desde otro dominio/puerto.
      */
+    /**
+     * CONFIGURACIÓN CORS (Cross-Origin Resource Sharing)
+     * Define quién puede hablar con nuestra API desde otro dominio/puerto.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Orígenes permitidos (El puerto de tu Frontend)
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8080", "http://localhost:5174"));
+        // AQUÍ ESTÁ EL CAMBIO: Agregamos http://localhost:5173 a la lista
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:3000", 
+            "http://localhost:8080", 
+            "http://localhost:5174", 
+            "http://localhost:5173" // <-- Tu frontend actual
+        ));
 
         // Métodos HTTP permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
