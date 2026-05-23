@@ -69,10 +69,9 @@ Este proyecto es una plataforma web orientada a la **transferencia y almacenamie
 Para probar el proyecto en tu entorno de desarrollo, asegúrate de tener instalados **Node.js**, **Java 17+**, y **Maven**.
 
 ### 1. Clonar el repositorio
-```bash
+
 git clone [[https://github.com/tu-usuario/sistema-transferencia-archivos-tt-back-front.git](https://github.com/AntonioDominguezOrtega/SISTEMA-TRANSFERENCIA-ARCHIVOS-TT-BACK-FRONT.git)]([https://github.com/tu-usuario/sistema-transferencia-archivos-tt-back-front.git](https://github.com/AntonioDominguezOrtega/SISTEMA-TRANSFERENCIA-ARCHIVOS-TT-BACK-FRONT.git))
-cd sistema-transferencia-archivos-tt-back-front
-```
+
 ### 2. Configurar y levantar el Backend (Spring Boot)
 Navega a la carpeta del backend:
 ```bash
