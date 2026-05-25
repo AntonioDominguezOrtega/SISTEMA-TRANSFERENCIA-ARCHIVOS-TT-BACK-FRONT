@@ -217,7 +217,7 @@ public class FileShareService {
         twilioService.sendVerificationCode(phoneNumber, token);
 
         // Enviar por Email (Backup)
-        emailService.sendSimpleMessage(currentUser.getEmail(), "Codigo de desbloqueo - Archivo Seguro", message);
+        emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_REQUEST, true,
             "Token enviado a" + maskPhoneNumber(phoneNumber));

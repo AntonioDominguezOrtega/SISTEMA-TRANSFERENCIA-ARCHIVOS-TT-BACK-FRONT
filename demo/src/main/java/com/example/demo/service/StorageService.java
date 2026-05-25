@@ -474,9 +474,7 @@ public class StorageService {
             log.warn("Error al enviar SMS: {}", e.getMessage());
         }
 
-        emailService.sendSimpleMessage(currentUser.getEmail(),
-                "Código de desbloqueo",
-                "Tu código para desbloquear '" + share.getFile().getFileName() + "' es: " + token);
+        emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         return "Token enviado exitosamente";
     }
@@ -794,10 +792,11 @@ public class StorageService {
         }
 
         // Enviar email
-        emailService.sendSimpleMessage(
+        emailService.sendNotificationEmail(
                 share.getSharedWith().getEmail(),
                 "Te compartieron un archivo",
-                content
+                content,
+                share.getSharedWith().getNombre()
         );
 
         // Crear notificación en la campanita
