@@ -23,11 +23,9 @@ public class JwtUtils {
     // Logger para registrar eventos en la consola (útil para ver errores de validación)
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    // Inyectamos la CLAVE SECRETA desde application.properties
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
-    // Inyectamos el TIEMPO DE EXPIRACIÓN desde application.properties
     @Value("${app.jwt.expiration-ms}")
     private int jwtExpirationMs;
 

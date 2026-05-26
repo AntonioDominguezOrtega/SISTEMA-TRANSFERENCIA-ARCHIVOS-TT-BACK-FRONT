@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import FileSelectorModal from '../components/FileSelectorModal';
 
 // Servicios Reales
-import profileService from '../services/profileService';
+import profileService from '../services/configService';
 import searchService from '../services/searchService';
 
 // React Icons
@@ -83,7 +83,9 @@ export default function EnviarArchivo() {
     const loadContacts = async () => {
       try {
         const response = await profileService.getMyContacts();
-        setMisContactos(response.contacts || []);
+        // Como usamos axios directo, la información está dentro de response.data
+        // Hacemos un fallback por si el backend devuelve un arreglo directo o un objeto con "contacts"
+        setMisContactos(response.data.contacts || response.data || []);
       } catch (err) {
         console.error("Error al cargar mis contactos", err);
       }
@@ -100,10 +102,13 @@ export default function EnviarArchivo() {
       setBuscandoGlobal(true);
       const delay = setTimeout(async () => {
         try {
-          const response = await profileService.searchUsersByAny(query);
-          setResultadosFiltradosGlobal(response.results || []);
+          // CAMBIO AQUÍ: Llamamos a searchGlobalUsers en lugar de searchUsersByAny
+          const response = await profileService.searchGlobalUsers(query);
+          
+          // CAMBIO AQUÍ: Extraemos los resultados de response.data
+          setResultadosFiltradosGlobal(response.data.results || response.data || []);
         } catch (err) {
-          console.error(err);
+          console.error("Error en búsqueda global:", err);
         } finally {
           setBuscandoGlobal(false);
         }
@@ -362,50 +367,34 @@ export default function EnviarArchivo() {
     <PrivateLayout>
       <main style={{ paddingTop: '110px', paddingBottom: '80px', color: 'white', maxWidth: '800px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
         
-        <section className="section-top" style={{ marginBottom: '30px', textAlign: 'left' }}>
-          <button 
-            onClick={() => navigate(-1)} 
-            style={{ background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0 }}
-          >
-            <FaChevronLeft /> Cancelar y volver al espacio
+        <section style={{ marginBottom: '30px', textAlign: 'left' }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0 }}>
+            <FaChevronLeft /> Cancelar y volver
           </button>
-        </section>
-
-        <section>
-          <h1 style={{ fontSize: '2.2rem', fontWeight: '700', color: '#3C60E2' }}>Enviar Archivo</h1>
-          <p style={{ color: 'var(--color-text-medium)', marginTop: '4px' }}>Comparte archivos de forma segura con otros usuarios. Configura permisos, seguridad y tiempo de expiración.</p>
-          <br />
+          <h1 style={{ fontSize: '2.2rem', fontWeight: '700', color: 'white' }}>Enviar Archivos</h1>
+          <p style={{ color: 'var(--color-text-medium)', marginTop: '4px' }}>
+            Comparte de forma segura. Configura permisos de vista/descarga, cifrado AES-256 y expiración automática.
+          </p>
         </section>
 
         {error && (
-          <div style={{ padding: '16px', backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d', border: '1px solid rgba(245, 34, 45, 0.2)', borderRadius: '10px', marginBottom: '25px', textAlign: 'left' }}>
-            <strong>Error de Políticas:</strong> {error}
+          <div style={{ padding: '16px', backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d', border: '1px solid rgba(245, 34, 45, 0.2)', borderRadius: '10px', marginBottom: '25px' }}>
+            <strong>Error:</strong> {error}
           </div>
         )}
         {success && (
-          <div style={{ padding: '16px', backgroundColor: 'rgba(82, 196, 26, 0.15)', color: '#52c41a', border: '1px solid rgba(82, 196, 26, 0.2)', borderRadius: '10px', marginBottom: '25px', textAlign: 'left' }}>
+          <div style={{ padding: '16px', backgroundColor: 'rgba(82, 196, 26, 0.15)', color: '#52c41a', border: '1px solid rgba(82, 196, 26, 0.2)', borderRadius: '10px', marginBottom: '25px' }}>
             <strong>{success}</strong>
           </div>
         )}
 
-        <form 
-          onSubmit={handleSubmit} 
-          style={{ 
-            backgroundColor: '#1D263C', 
-            padding: '35px', 
-            borderRadius: '16px', 
-            border: '1px solid #0a3fff', 
-            boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.35)',
-            textAlign: 'left'
-          }}
-        >
+        <form onSubmit={handleSubmit} style={{ backgroundColor: '#1D263C', padding: '35px', borderRadius: '16px', border: '1px solid #0a3fff', boxShadow: '0 0 20px rgba(10, 63, 255, 0.35)' }}>
           
           {/* ======================================= */}
           {/* 1. SELECCIÓN DE ORIGEN Y ARCHIVOS */}
           {/* ======================================= */}
-          <div style={{ marginBottom: '25px' }}>
-            <label className="form-label" style={{ color: 'white', fontWeight: '600' }}>Archivos a enviar *</label>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '12px', marginBottom: '20px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '10px' }}>
+          <div style={{ marginBottom: '30px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '10px' }}>
               <button type="button" onClick={() => setOrigenArchivo('NUEVO')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: origenArchivo === 'NUEVO' ? '#0a3fff' : 'transparent', color: 'white', fontWeight: origenArchivo === 'NUEVO' ? 'bold' : 'normal', cursor: 'pointer' }}>
                 <FaUpload style={{ marginRight: '8px' }} /> Subir Nuevo Archivo
               </button>

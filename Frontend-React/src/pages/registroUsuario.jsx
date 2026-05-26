@@ -23,16 +23,30 @@ export default function RegistroUsuario() {
   const [tokenInput, setTokenInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState(null); // null = no validado, true = coinciden, false = no coinciden
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+    const updatedFormData = { ...formData, [e.target.id]: e.target.value };
+    setFormData(updatedFormData);
+
+    // Validar contraseñas en tiempo real
+    if (e.target.id === 'password' || e.target.id === 'confirmPassword') {
+      const newPassword = e.target.id === 'password' ? e.target.value : updatedFormData.password;
+      const newConfirmPassword = e.target.id === 'confirmPassword' ? e.target.value : updatedFormData.confirmPassword;
+      
+      if (newPassword && newConfirmPassword) {
+        setPasswordsMatch(newPassword === newConfirmPassword);
+      } else {
+        setPasswordsMatch(null);
+      }
+    }
   };
 
   const handleRegisterClick = (e) => {
     e.preventDefault();
     
     // Validación de contraseñas
-    if (formData.password !== formData.confirmPassword) {
+    if (!passwordsMatch) {
       alert("Las contraseñas no coinciden.");
       return;
     }
@@ -158,6 +172,31 @@ export default function RegistroUsuario() {
                     <input type="password" id="confirmPassword" className="form-control-modern" placeholder="••••••••" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
                   </div>
                 </div>
+
+                {/* Validación de contraseñas en tiempo real */}
+                {passwordsMatch !== null && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    marginBottom: '1.5rem',
+                    backgroundColor: passwordsMatch ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    border: `1px solid ${passwordsMatch ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                  }}>
+                    <span style={{ fontSize: '1.1rem' }}>
+                      {passwordsMatch ? '✓' : '✕'}
+                    </span>
+                    <span style={{
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      color: passwordsMatch ? '#22c55e' : '#ef4444'
+                    }}>
+                      {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
+                    </span>
+                  </div>
+                )}
 
                 {/* 🌟 SECCIÓN TRASLADADA: TÉRMINOS Y CONDICIONES (Ahora antes de enviar datos) */}
                 <div className="form-terms" style={{ 

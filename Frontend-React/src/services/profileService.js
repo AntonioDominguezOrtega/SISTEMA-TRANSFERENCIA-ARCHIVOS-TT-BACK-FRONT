@@ -23,6 +23,56 @@ const profileService = {
   deleteProfilePhoto: async () => {
     const response = await api.delete('/profile/photo');
     return response.data;
+  },
+
+  // ============================================================
+  // MÉTODOS DE CONTACTOS
+  // ============================================================
+
+  // Obtener mis contactos
+  getMyContacts: async () => {
+    try {
+      const response = await api.get('/contacts/my-contacts');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener contactos:', error);
+      throw error;
+    }
+  },
+
+  // Buscar usuarios en el directorio global
+  searchGlobalUsers: async (query) => {
+    try {
+      const response = await api.get('/contacts/search', {
+        params: { q: query }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error en búsqueda global:', error);
+      throw error;
+    }
+  },
+
+  // Agregar un contacto
+  addContact: async (userId) => {
+    try {
+      const response = await api.post('/contacts/add', { userId });
+      return response.data;
+    } catch (error) {
+      console.error('Error al agregar contacto:', error);
+      throw error;
+    }
+  },
+
+  // Eliminar un contacto
+  removeContact: async (contactId) => {
+    try {
+      const response = await api.delete(`/contacts/${contactId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al eliminar contacto:', error);
+      throw error;
+    }
   }
 };
 

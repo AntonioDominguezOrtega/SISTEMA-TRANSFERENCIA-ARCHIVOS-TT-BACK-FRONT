@@ -22,18 +22,6 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String smtpUsername;
 
-    @Value("${spring.mail.from.register}")
-    private String fromRegisterEmail;
-
-    @Value("${spring.mail.from.notification}")
-    private String fromNotificationEmail;
-
-    @Value("${spring.mail.from.support}")
-    private String fromSupportEmail;
-
-    @Value("${spring.mail.from.reset}")
-    private String fromResetEmail;
-
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
@@ -54,7 +42,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("codigo-registro", context);
 
-            sendHtmlEmail(fromRegisterEmail, toEmail, "Verifica tu cuenta en TT", htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, "Verifica tu cuenta en TT", htmlContent);
             log.info("Email de verificación de cuenta enviado a: {}", toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email de verificación de cuenta: {}", e.getMessage(), e);
@@ -72,7 +60,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("codigo-contraseña", context);
 
-            sendHtmlEmail(fromResetEmail, toEmail, "Restablece tu contraseña", htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, "Restablece tu contraseña", htmlContent);
             log.info("Email con token de restablecimiento enviado a: {}", toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email de restablecimiento: {}", e.getMessage(), e);
@@ -90,7 +78,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("codigo-registro", context);
 
-            sendHtmlEmail(fromRegisterEmail, toEmail, "Código de verificación de seguridad", htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, "Código de verificación de seguridad", htmlContent);
             log.info("Email con código de seguridad enviado a: {}", toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email con código: {}", e.getMessage(), e);
@@ -107,7 +95,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("codigo-archivo", context);
 
-            sendHtmlEmail(fromNotificationEmail, toEmail, "Token para desbloquear archivo", htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, "Token para desbloquear archivo", htmlContent);
             log.info("Email de token de desbloqueo enviado a: {}", toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email de token de desbloqueo: {}", e.getMessage(), e);
@@ -124,7 +112,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("notification-email", context);
 
-            sendHtmlEmail(fromNotificationEmail, toEmail, subject, htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, subject, htmlContent);
             log.info("Email de notificación ('{}') enviado a: {}", subject, toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email de notificación a {}: {}", toEmail, e.getMessage(), e);
@@ -141,7 +129,7 @@ public class EmailService {
 
             String htmlContent = templateEngine.process("notification-email", context);
 
-            sendHtmlEmail(fromSupportEmail, toEmail, "Solicitud de soporte recibida", htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, "Solicitud de soporte recibida", htmlContent);
             log.info("Email de soporte enviado a: {}", toEmail);
         } catch (Exception e) {
             log.error("Error al enviar email de soporte a {}: {}", toEmail, e.getMessage(), e);
@@ -157,7 +145,7 @@ public class EmailService {
             context.setVariable("message", messageContent);
 
             String htmlContent = templateEngine.process("notification-email", context);
-            sendHtmlEmail(fromNotificationEmail, toEmail, subject, htmlContent);
+            sendHtmlEmail(smtpUsername, toEmail, subject, htmlContent);
             log.info("Email genérico enviado a {} con asunto: {}", toEmail, subject);
         } catch (Exception e) {
             log.error("Error al enviar email genérico a {}: {}", toEmail, e.getMessage(), e);

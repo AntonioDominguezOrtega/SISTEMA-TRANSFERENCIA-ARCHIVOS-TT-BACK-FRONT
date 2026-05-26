@@ -19,10 +19,8 @@ export default function Sidebar({ isOpen, closeSidebar }) {
           <li><NavLink to="/perfil" onClick={closeSidebar}>Perfil</NavLink></li>
           <li><NavLink to="/contactos" onClick={closeSidebar}>Contactos</NavLink></li>
           {/* <li><NavLink to="/carpetas" onClick={closeSidebar}>Carpetas</NavLink></li> */}
-          <li><NavLink to="/recientes" onClick={closeSidebar}>Recientes</NavLink></li>
           <li><NavLink to="/compartidos" onClick={closeSidebar}>Vencidos</NavLink></li>
           <li><NavLink to="/subir-archivo" onClick={closeSidebar}>Subir archivo</NavLink></li>
-          <li><NavLink to="/papelera" onClick={closeSidebar}>Papelera</NavLink></li>
           <li><NavLink to="/favoritos" onClick={closeSidebar}>Favoritos</NavLink></li>
           
           <hr style={{ border: 'none', borderTop: '1px solid #e3e3e3', margin: '10px 0' }} />

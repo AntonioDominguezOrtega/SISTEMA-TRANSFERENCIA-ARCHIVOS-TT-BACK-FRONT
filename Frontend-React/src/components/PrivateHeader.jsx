@@ -238,10 +238,24 @@ export default function PrivateHeader({ toggleSidebar }) {
     }
   };
 
-  const handleLogout = () => {
-    websocketService.disconnect();
-    localStorage.clear();
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      // Desconectar websocket si está disponible
+      // websocketService.disconnect();
+      
+      // Limpiar almacenamiento local
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Navegar a home
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      // Aun así limpia y navega aunque falle
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate('/', { replace: true });
+    }
   };
 
   // Formatear tiempo de notificación
