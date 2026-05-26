@@ -474,9 +474,7 @@ public class StorageService {
             log.warn("Error al enviar SMS: {}", e.getMessage());
         }
 
-        emailService.sendSimpleMessage(currentUser.getEmail(),
-                "Código de desbloqueo",
-                "Tu código para desbloquear '" + share.getFile().getFileName() + "' es: " + token);
+        emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         return "Token enviado exitosamente";
     }
@@ -794,10 +792,11 @@ public class StorageService {
         }
 
         // Enviar email
-        emailService.sendSimpleMessage(
+        emailService.sendNotificationEmail(
                 share.getSharedWith().getEmail(),
                 "Te compartieron un archivo",
-                content
+                content,
+                share.getSharedWith().getNombre()
         );
 
         // Crear notificación en la campanita
@@ -1317,45 +1316,5 @@ public class StorageService {
                 .accessLevel(share.getAccessLevel().toString())
                 .securityLevel(share.getSecurityLevel().toString())
                 .build();
-    }
-
-// En StorageService.java, agrega este método:
-
-    /**
-     * Genera URL para vista previa de archivo personal (solo lectura)
-     */
-    @Transactional(readOnly = true)
-    public String getPreviewUrl(String fileId) {
-        User currentUser = getCurrentUser();
-
-        FileMetadata file = fileMetadataRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
-
-        // Verificar que el usuario es el dueño
-        if (!file.getUploadedBy().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("No tienes acceso a este archivo");
-        }
-
-        // Verificar que el archivo no esté eliminado
-        if (Boolean.TRUE.equals(file.getIsDeleted())) {
-            throw new RuntimeException("El archivo está en la papelera");
-        }
-
-        // Si el archivo tiene seguridad, verificar que esté desbloqueado
-        // Para archivos personales, verificamos el FileShare asociado
-        if (!file.getIsFolder()) {
-            Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(fileId, currentUser);
-            if (share.isPresent() && share.get().getSecurityLevel() != SecurityLevel.PUBLIC) {
-                boolean isUnlocked = share.get().getIsUnlocked() != null && share.get().getIsUnlocked() &&
-                        share.get().getUnlockedUntil() != null && share.get().getUnlockedUntil().isAfter(LocalDateTime.now());
-
-                if (!isUnlocked) {
-                    throw new RuntimeException("El archivo está bloqueado. Desbloquéalo primero.");
-                }
-            }
-        }
-
-        // Generar SAS token de solo lectura (válido por 30 minutos)
-        return azureBlobService.generatePreviewUrl(file.getBlobUrl(), 30);
     }
 }

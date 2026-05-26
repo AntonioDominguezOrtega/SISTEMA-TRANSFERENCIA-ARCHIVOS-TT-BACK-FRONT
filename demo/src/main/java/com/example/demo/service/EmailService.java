@@ -16,109 +16,166 @@ import org.thymeleaf.context.Context;
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender; // La librería de Spring que habla con Gmail
-    private final TemplateEngine templateEngine; // Thymeleaf: Para llenar los huecos en el HTML
+    private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
     @Value("${spring.mail.username}")
-    private String fromEmail; // Tu correo (leído del application.properties)
+    private String smtpUsername;
+
+    @Value("${spring.mail.from.register}")
+    private String fromRegisterEmail;
+
+    @Value("${spring.mail.from.notification}")
+    private String fromNotificationEmail;
+
+    @Value("${spring.mail.from.support}")
+    private String fromSupportEmail;
+
+    @Value("${spring.mail.from.reset}")
+    private String fromResetEmail;
 
     @Value("${app.frontend.url}")
-    private String frontendUrl; // http://localhost:3000
+    private String frontendUrl;
 
-    /**
-     * ENVIAR LINK DE RECUPERACIÓN
-     * Genera un correo con un botón que lleva al usuario a resetear su password.
-     * @Async: Importante para que el usuario no se quede esperando a que Gmail responda.
-     */
+    @Value("${app.reset-password.expiration-minutes:30}")
+    private int resetExpirationMinutes;
+
+    @Value("${app.verification.code-expiration-minutes:10}")
+    private int verificationCodeExpirationMinutes;
+
     @Async
-    public void sendPasswordResetEmail(String toEmail, String token, String nombre) {
+    public void sendAccountVerificationEmail(String toEmail, String code, String nombre) {
         try {
-            // Preparamos el mensaje MIME (formato estándar de email)
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            // Contexto de Thymeleaf: Aquí ponemos las variables que van al HTML
-            Context context = new Context();
-            context.setVariable("nombre", nombre);
-            // Creamos el link completo: http://localhost:3000/reset-password?token=xyz...
-            context.setVariable("resetLink", frontendUrl + "/reset-password?token=" + token);
-            context.setVariable("expirationMinutes", 30);
-
-            // "Renderizamos" el HTML: Convertimos la plantilla + variables en un String HTML final
-            String htmlContent = templateEngine.process("password-reset-email", context);
-
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("Reestablecimiento de Contraseña");
-            helper.setText(htmlContent, true); // true indica que es contenido HTML, no texto plano
-
-            mailSender.send(message);
-            log.info("Email con codigo de recuperacion enviado a: {}", toEmail);
-        } catch (Exception e) {
-            log.error("Error al enviar email de recuperacion: {}", e.getMessage());
-            // No lanzamos excepción para no romper el flujo principal, solo logueamos
-        }
-    }
-
-    /**
-     * ENVIAR CÓDIGO DE RECUPERACIÓN (OTP)
-     * Envía un correo simple con los 6 dígitos.
-     */
-    @Async
-    public void sendPasswordResetCodeEmail(String toEmail, String code, String nombre) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
             Context context = new Context();
             context.setVariable("nombre", nombre);
             context.setVariable("code", code);
-            context.setVariable("expirationMinute", 10);
+            context.setVariable("messageIntro", "Este es tu código para verificar tu correo y completar el registro de tu cuenta.");
+            context.setVariable("expirationMinutes", verificationCodeExpirationMinutes);
 
-            // Usamos una plantilla diferente
-            String htmlContent = templateEngine.process("password-reset-code-email", context);
+            String htmlContent = templateEngine.process("codigo-registro", context);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("Codigo para Restablecer Contraeña");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            log.info("Email con codigo de recuperacion enviado a: {}", toEmail);
-
+            sendHtmlEmail(fromRegisterEmail, toEmail, "Verifica tu cuenta en TT", htmlContent);
+            log.info("Email de verificación de cuenta enviado a: {}", toEmail);
         } catch (Exception e) {
-            log.error("Error al enviar email con codigo: {}", e.getMessage());
+            log.error("Error al enviar email de verificación de cuenta: {}", e.getMessage(), e);
         }
     }
 
-    /**
-     * ENVIAR NOTIFICACIÓN GENÉRICA (CON THYMELEAF)
-     * Se usa para avisos de vistas, descargas, destrucción de archivos y SMS de respaldo.
-     */
     @Async
-    public void sendSimpleMessage(String toEmail, String subject, String messageContent) {
+    public void sendPasswordResetEmail(String toEmail, String token, String nombre) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            // Preparamos las variables para el HTML
             Context context = new Context();
-            context.setVariable("asunto", subject);
+            context.setVariable("nombre", nombre);
+            context.setVariable("code", token);
+            context.setVariable("messageIntro", "Este es tu código para continuar con el restablecimiento de tu contraseña.");
+            context.setVariable("expirationMinutes", resetExpirationMinutes);
+
+            String htmlContent = templateEngine.process("codigo-contraseña", context);
+
+            sendHtmlEmail(fromResetEmail, toEmail, "Restablece tu contraseña", htmlContent);
+            log.info("Email con token de restablecimiento enviado a: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar email de restablecimiento: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendPasswordResetCodeEmail(String toEmail, String code, String nombre) {
+        try {
+            Context context = new Context();
+            context.setVariable("nombre", nombre);
+            context.setVariable("code", code);
+            context.setVariable("messageIntro", "Este es tu código para continuar con el restablecimiento de tu contraseña.");
+            context.setVariable("expirationMinutes", verificationCodeExpirationMinutes);
+
+            String htmlContent = templateEngine.process("codigo-registro", context);
+
+            sendHtmlEmail(fromRegisterEmail, toEmail, "Código de verificación de seguridad", htmlContent);
+            log.info("Email con código de seguridad enviado a: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar email con código: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendFileUnlockTokenEmail(String toEmail, String code, String nombre, String fileName) {
+        try {
+            Context context = new Context();
+            context.setVariable("nombre", nombre);
+            context.setVariable("messageIntro", "Recibimos una solicitud para desbloquear el archivo '" + fileName + "'. Este es tu token de acceso.");
+            context.setVariable("code", code);
+
+            String htmlContent = templateEngine.process("codigo-archivo", context);
+
+            sendHtmlEmail(fromNotificationEmail, toEmail, "Token para desbloquear archivo", htmlContent);
+            log.info("Email de token de desbloqueo enviado a: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar email de token de desbloqueo: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendNotificationEmail(String toEmail, String subject, String messageContent, String nombre) {
+        try {
+            Context context = new Context();
+            context.setVariable("nombre", nombre);
+            context.setVariable("subject", subject);
             context.setVariable("message", messageContent);
 
-            // Renderizamos la plantilla genérica
             String htmlContent = templateEngine.process("notification-email", context);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true); // true = ¡Es HTML!
-
-            mailSender.send(message);
+            sendHtmlEmail(fromNotificationEmail, toEmail, subject, htmlContent);
             log.info("Email de notificación ('{}') enviado a: {}", subject, toEmail);
-
         } catch (Exception e) {
-            log.error("Error al enviar email de notificación a {}: {}", toEmail, e.getMessage());
+            log.error("Error al enviar email de notificación a {}: {}", toEmail, e.getMessage(), e);
         }
+    }
+
+    @Async
+    public void sendSupportEmail(String toEmail, String nombre) {
+        try {
+            Context context = new Context();
+            context.setVariable("nombre", nombre);
+            context.setVariable("subject", "Solicitud de soporte recibida");
+            context.setVariable("message", "Gracias por contactarte con soporte. Un ejecutivo se pondrá en contacto contigo pronto para continuar con tu caso.");
+
+            String htmlContent = templateEngine.process("notification-email", context);
+
+            sendHtmlEmail(fromSupportEmail, toEmail, "Solicitud de soporte recibida", htmlContent);
+            log.info("Email de soporte enviado a: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar email de soporte a {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSimpleMessage(String toEmail, String subject, String messageContent, String nombre) {
+        try {
+            Context context = new Context();
+            context.setVariable("nombre", nombre != null ? nombre : "");
+            context.setVariable("subject", subject);
+            context.setVariable("message", messageContent);
+
+            String htmlContent = templateEngine.process("notification-email", context);
+            sendHtmlEmail(fromNotificationEmail, toEmail, subject, htmlContent);
+            log.info("Email genérico enviado a {} con asunto: {}", toEmail, subject);
+        } catch (Exception e) {
+            log.error("Error al enviar email genérico a {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSimpleMessage(String toEmail, String subject, String messageContent) {
+        sendSimpleMessage(toEmail, subject, messageContent, "");
+    }
+
+    private void sendHtmlEmail(String from, String toEmail, String subject, String htmlContent) throws Exception {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(from);
+        helper.setTo(toEmail);
+        helper.setSubject(subject);
+        helper.setText(htmlContent, true);
+        mailSender.send(message);
     }
 }
