@@ -21,10 +21,8 @@ import Configuracion from './pages/configuracion'
 import Contactos from './pages/contactosUsuario'
 import Nosotros from './pages/nosotros'
 import Perfil from './pages/perfilUsuario'
-import Registro from './pages/registroUsuario'
 import TerminosCondiciones from './pages/terminosCondiciones'
 import RegistroUsuario from './pages/registroUsuario'
-import ContactosUsuario from './pages/contactosUsuario'
 import RecuperacionContrasena from './pages/recuperacionContrasena'
 import Favoritos from './pages/favoritos'
 import AnadirAmigo from './pages/anadirAmigos'
@@ -59,7 +57,7 @@ function App() {
           <Route path="/contactos" element={<Contactos/>} />
           <Route path="/ayuda-soporte" element={<AyudaSoporte />} />
           <Route path="/favoritos" element={<Favoritos />} />
-          <Route path="/anadir-amigos" element={<anadirAmigos />} />
+          <Route path="/anadir-amigos" element={<AnadirAmigo />} />
           <Route path="/enviar-archivo" element={<EnviarArchivo />} />
 
           <Route path="*" element={<NotFound />} />

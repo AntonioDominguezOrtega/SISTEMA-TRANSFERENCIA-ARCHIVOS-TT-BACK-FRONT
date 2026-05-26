@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
 import DetallesModal from '../components/DetallesModal'
+import storageService from '../services/storageService'
 
 const getSecurityBadge = (status) => {
   if (status === 'password') return <span title="Bloqueada con contraseña" style={{ fontSize: '1rem', marginRight: '6px' }}>🔒</span>;
@@ -9,16 +10,10 @@ const getSecurityBadge = (status) => {
   return null;
 }
 
-const fetchDashboardData = async () => {
-  
-    return {
-      stats: { total: 12, shared: 4, favorites: 3 },
-      folders: [
-        { id: 'fld-1', name: 'Documentos personales', fileCount: 12, lastModified: 'Hoy', icon: '📁', security: 'encrypted' },
-        { id: 'fld-2', name: 'Proyecto terminal', fileCount: 8, lastModified: 'Ayer', icon: '📁', security: 'public' },
-        { id: 'fld-4', name: 'Borradores Financieros', fileCount: 10, lastModified: 'Hoy', icon: '📁', security: 'password' }
-      ]
-    };
+// Carga reales de carpetas/archivos personales desde el servicio
+const fetchFolderContents = async () => {
+  const result = await storageService.getFolderContents();
+  return result.contents || result || [];
 }
 
 export default function Carpetas() {
@@ -32,8 +27,9 @@ export default function Carpetas() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const result = await fetchDashboardData();
-        setData(result);
+        const contents = await fetchFolderContents();
+        const carpetas = contents.filter(item => item.isFolder === true);
+        setData({ folders: carpetas });
       } catch (err) {
         console.error("Error local al cargar carpetas:", err);
         setError('No se pudo cargar la información de las carpetas.');

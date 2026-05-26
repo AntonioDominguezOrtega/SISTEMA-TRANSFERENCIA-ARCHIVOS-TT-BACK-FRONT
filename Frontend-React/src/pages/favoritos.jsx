@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
 import CompartirModal from '../components/CompartirModal';
 import DetallesModal from '../components/DetallesModal'
+import storageService from '../services/storageService'
 
 // Función auxiliar para los niveles de seguridad
 const getSecurityBadge = (status) => {
@@ -11,32 +12,22 @@ const getSecurityBadge = (status) => {
   return null; // 'public' no renderiza ícono
 }
 
-const fetchRecentData = async () => {
-  
-    return [
-      { id: 'fld-2', type: 'folder', name: 'Proyecto terminal', info: '8 archivos', date: 'Hoy, 10:30 AM', icon: '📁', security: 'public' },
-      { id: 'f-1', type: 'file', name: 'Contraseñas_Servidor.pdf', info: '2.4 MB', date: 'Hoy, 09:15 AM', icon: '📄', security: 'encrypted' }, // Cifrado
-      { id: 'f-2', type: 'file', name: 'Presupuesto.xlsx', info: '1.1 MB', date: 'Ayer, 04:20 PM', icon: '📊', security: 'password' }, // Contraseña
-      { id: 'fld-4', type: 'folder', name: 'Carpeta_Privada', info: '10 archivos', date: 'Ayer, 11:00 AM', icon: '📁', security: 'encrypted' }, // Carpeta cifrada
-      { id: 'f-3', type: 'file', name: 'Diagrama_Arquitectura.png', info: '4.5 MB', date: 'Hace 2 días', icon: '🖼️', security: 'public' }
-    ];
-}
-
-export default function Recientes() {
+export default function Favoritos() {
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [elementoSeleccionado, setElementoSeleccionado] = useState(null) // <- NUEVO
+  const [elementoSeleccionado, setElementoSeleccionado] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const result = await fetchRecentData();
-        setItems(result);
+        const result = await storageService.getFavorites();
+        const list = result.favorites || result || [];
+        setItems(list);
       } catch (err) {
-        console.error("Error local al cargar elementos recientes:", err);
+        console.error("Error local al cargar elementos favoritos:", err);
         setError('No se pudieron cargar los elementos favoritos.');
       } finally {
         setIsLoading(false);
@@ -45,8 +36,9 @@ export default function Recientes() {
     loadData();
   }, [])
 
-  const handleCardClick = (type, itemId) => {
-    navigate(type === 'folder' ? `/carpeta/${itemId}` : `/archivo/${itemId}`)
+  const handleCardClick = (item) => {
+    if (item.type === 'folder' || item.type === 'PERSONAL') navigate(`/carpeta/${item.itemId || item.id}`)
+    else navigate(`/archivo/${item.itemId || item.id}`)
   }
 
   return (
@@ -72,21 +64,21 @@ export default function Recientes() {
           ) : (
             <div className="cards-grid">
               {items.map(item => (
-                <article key={item.id} className={item.type === 'folder' ? 'folder-card' : 'file-card'} onClick={() => handleCardClick(item.type, item.id)} style={{ cursor: 'pointer' }}>
+                <article key={item.favoriteId || item.itemId || item.id} className={item.type === 'folder' ? 'folder-card' : 'file-card'} onClick={() => handleCardClick(item)} style={{ cursor: 'pointer' }}>
                   <div className={item.type === 'folder' ? 'folder-card-top' : 'file-card-top'}>
-                    <span className={item.type === 'folder' ? 'folder-icon' : 'file-type'}>{item.icon}</span>
+                    <span className={item.type === 'folder' ? 'folder-icon' : 'file-type'}>{item.icon || '📄'}</span>
                     <button className="card-menu-btn" onClick={(e) => {
                       e.stopPropagation();
                       setElementoSeleccionado(item);
                     }}>⋮</button>
                   </div>
                   <div className={item.type === 'folder' ? 'folder-card-body' : 'file-card-body'}>
-                    <h3 title={item.name} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
-                      {getSecurityBadge(item.security)}
-                      {item.name}
+                    <h3 title={item.name || item.fileName || item.itemName} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+                      {getSecurityBadge(item.securityLevel || item.security)}
+                      {item.name || item.fileName || item.itemName}
                     </h3>
-                    <p>{item.info}</p>
-                    <small>Abierto: {item.date}</small>
+                    <p>{item.info || (item.fileSize ? `${item.fileSize} bytes` : '')}</p>
+                    <small>Favorito</small>
                   </div>
                 </article>
               ))}
@@ -94,7 +86,6 @@ export default function Recientes() {
           )}
         </section>
       )}
-        {/* Nuestro nuevo Modal Global */}
       <DetallesModal 
         elemento={elementoSeleccionado} 
         onClose={() => setElementoSeleccionado(null)} 

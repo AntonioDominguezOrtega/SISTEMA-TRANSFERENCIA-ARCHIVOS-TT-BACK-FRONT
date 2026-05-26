@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import PrivateLayout from '../components/PrivateLayout'
+import storageService from '../services/storageService'
 
 // Funciones de Seguridad (Reutilizadas)
 const getSecurityBadge = (status) => {
@@ -10,15 +11,8 @@ const getSecurityBadge = (status) => {
 
 // Servicio API (Simulado)
 const fetchTrashData = async () => {
-  
-    // 🔗 API REAL: const res = await fetch('/api/papelera'); return res.json();
-    return [
-      { id: 'del-1', type: 'file', name: 'Borrador_Antiguo.docx', info: '1.2 MB', deletedAt: 'Hace 2 horas', icon: '📝', security: 'public' },
-      { id: 'del-2', type: 'folder', name: 'Fotos_2024', info: '45 archivos', deletedAt: 'Ayer', icon: '📁', security: 'password' },
-      { id: 'del-3', type: 'file', name: 'Contraseñas_Viejas.pdf', info: '0.5 MB', deletedAt: 'Hace 5 días', icon: '📄', security: 'encrypted' },
-      { id: 'del-4', type: 'file', name: 'Presupuesto_Rechazado.xlsx', info: '2.1 MB', deletedAt: 'Hace 2 semanas', icon: '📊', security: 'public' }
-    ];
-
+  const result = await storageService.getTrash();
+  return result.trash || result || [];
 }
 
 // Componente Principal
@@ -44,24 +38,40 @@ export default function Papelera() {
   }, [])
 
   // Funciones de acción simuladas
-  const handleRestore = (itemName) => {
-    alert(`Restaurando "${itemName}" a su ubicación original...`);
-    // Aquí iría la llamada al backend: await fetch(`/api/papelera/restaurar/${id}`, { method: 'POST' })
+  const handleRestore = async (itemId) => {
+    try {
+      await storageService.restoreItem(itemId);
+      setItems(prev => prev.filter(i => i.id !== itemId));
+      alert('Elemento restaurado correctamente');
+    } catch (err) {
+      alert('Error al restaurar: ' + (err.response?.data?.error || err.message));
+    }
   }
 
-  const handlePermanentDelete = (itemName) => {
+  const handlePermanentDelete = async (itemId, itemName) => {
     const confirm = window.confirm(`¿Estás seguro de eliminar "${itemName}" definitivamente? Esta acción no se puede deshacer.`);
-    if (confirm) {
+    if (!confirm) return;
+    try {
+      await storageService.permanentDelete(itemId);
+      setItems(prev => prev.filter(i => i.id !== itemId));
       alert(`"${itemName}" eliminado para siempre.`);
-      // Backend: await fetch(`/api/papelera/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      alert('Error al eliminar: ' + (err.response?.data?.error || err.message));
     }
   }
 
   const handleEmptyTrash = () => {
     const confirm = window.confirm('¿Estás seguro de vaciar toda la papelera? Todos los archivos se perderán permanentemente.');
     if (confirm) {
-      alert('Vaciando papelera...');
-      setItems([]); // Limpiamos la vista
+      (async () => {
+        try {
+          await storageService.emptyTrash();
+          setItems([]);
+          alert('Papelera vaciada correctamente');
+        } catch (err) {
+          alert('Error al vaciar la papelera: ' + (err.response?.data?.error || err.message));
+        }
+      })();
     }
   }
 
@@ -126,10 +136,9 @@ export default function Papelera() {
                       title="Opciones"
                       onClick={(e) => { 
                         e.stopPropagation(); 
-                        // Menú rápido simulado con window.confirm para decidir qué hacer
                         const action = window.prompt(`Opciones para ${item.name}:\n1. Restaurar\n2. Eliminar definitivamente\n\nEscribe 1 o 2:`);
-                        if (action === '1') handleRestore(item.name);
-                        if (action === '2') handlePermanentDelete(item.name);
+                        if (action === '1') handleRestore(item.id);
+                        if (action === '2') handlePermanentDelete(item.id, item.name);
                       }}
                     >⋮</button>
                   </div>

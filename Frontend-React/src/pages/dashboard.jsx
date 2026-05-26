@@ -93,6 +93,8 @@ export default function Dashboard() {
   const [personalFolders, setPersonalFolders] = useState([]);
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [folderPath, setFolderPath] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
+  const [favoriteItems, setFavoriteItems] = useState([]);
   
   const [trashItems, setTrashItems] = useState([]);
   const [pestanaActiva, setPestanaActiva] = useState('miunidad');
@@ -144,7 +146,9 @@ export default function Dashboard() {
   const loadFavorites = async () => {
     try {
       const result = await storageService.getFavorites();
-      setFavoritos(result.favorites || []);
+      const favoriteList = result.favorites || result || [];
+      setFavoritos(favoriteList);
+      setFavoriteItems(favoriteList);
     } catch (err) {
       console.error('Error cargando favoritos:', err);
     }
@@ -181,17 +185,26 @@ export default function Dashboard() {
       else if (pestanaActiva === 'miunidad') {
         const result = await storageService.getFolderContents(currentFolderId);
         const contents = result.contents || [];
-        
-        const filteredContents = contents.filter(item => {
-          if (item.name === 'Mi unidad' || item.name === 'Mi Unidad') return false;
-          return true;
-        });
-        
+        const filteredContents = contents.filter(item => item.name !== 'Mi unidad' && item.name !== 'Mi Unidad');
         const carpetas = filteredContents.filter(item => item.isFolder === true);
         const archivos = filteredContents.filter(item => item.isFolder !== true);
-        
         setPersonalFolders(carpetas);
         setPersonalFiles(archivos);
+      }
+      else if (pestanaActiva === 'recientes') {
+        const [recentPersonal, recentShared] = await Promise.all([
+          storageService.getRecentPersonalFiles(),
+          storageService.getRecentSharedFiles()
+        ]);
+        const personal = recentPersonal.files || recentPersonal || [];
+        const shared = recentShared.files || recentShared || [];
+        setRecentItems([...personal, ...shared]);
+      }
+      else if (pestanaActiva === 'favoritos') {
+        const result = await storageService.getFavorites();
+        const favoriteList = result.favorites || result || [];
+        setFavoriteItems(favoriteList);
+        setFavoritos(favoriteList);
       }
       else if (pestanaActiva === 'papelera') {
         const result = await dashboardService.getTrash();
@@ -760,7 +773,7 @@ export default function Dashboard() {
     );
   };
 
-  const isLoading = loading && (pestanaActiva === 'recibidos' || pestanaActiva === 'enviados' || pestanaActiva === 'miunidad' || pestanaActiva === 'papelera');
+  const isLoadingVisible = loading && ['recibidos', 'enviados', 'miunidad', 'recientes', 'favoritos', 'papelera'].includes(pestanaActiva);
 
   // Determinar estado de desbloqueo del elemento en detalle
   const isUnlockedDetail = elementoDetalle && 
@@ -772,48 +785,53 @@ export default function Dashboard() {
 
   return (
     <PrivateLayout>
-      <main style={{ paddingTop: '110px', paddingBottom: '60px', maxWidth: '1300px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
+      <main style={{ paddingTop: '110px', paddingBottom: '60px', color: 'white', width: '100%', maxWidth: '1300px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
         
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
+        {/* Encabezado */}
+        <section className="section-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              ¡Hola, {nombreUsuario}! 👋
+            <h1 style={{ fontWeight: '700', fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              ¡Hola, {nombreUsuario}! <span className="wave-emoji">👋</span>
             </h1>
             <p style={{ color: 'var(--color-text-medium)' }}>Gestiona tus archivos de forma segura</p>
           </div>
           
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {pestanaActiva === 'recibidos' && (
-              <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
-                <FaShareSquare /> Enviar Archivo
-              </button>
-            )}
-            {pestanaActiva === 'miunidad' && (
               <>
-                <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary">
-                  <FaFolderPlus /> Crear Carpeta
-                </button>
-                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary">
+                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <FaUpload /> Subir Archivo
                 </button>
-                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
+                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <FaShareSquare /> Enviar Archivo
                 </button>
               </>
             )}
+            {pestanaActiva === 'miunidad' && (
+              <>
+                <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-accent)' }}>
+                  <FaFolderPlus /> Crear carpeta
+                </button>
+                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <FaUpload /> Subir
+                </button>
+                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaShareSquare /> Enviar
+                </button>
+              </>
+            )}
             {pestanaActiva === 'enviados' && (
-              <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
+              <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FaShareSquare /> Enviar Nuevo
               </button>
             )}
             {pestanaActiva === 'papelera' && trashItems.length > 0 && (
-              <button onClick={handleVaciarPapelera} className="btn" style={{ backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d' }}>
+              <button onClick={handleVaciarPapelera} className="btn" style={{ backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d', border: '1px solid rgba(245, 34, 45, 0.3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FaTrash /> Vaciar Papelera
               </button>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Mensajes del sistema */}
         {error && <div style={{ padding: '16px', backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d', border: '1px solid rgba(245, 34, 45, 0.2)', borderRadius: '10px', marginBottom: '20px' }}>{error}</div>}
@@ -831,13 +849,19 @@ export default function Dashboard() {
         {/* TABS */}
         <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '35px', flexWrap: 'wrap' }}>
           <button onClick={() => { setPestanaActiva('recibidos'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'recibidos' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'recibidos' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
-            <FaRegBell /> Recibidos
+            <FaRegBell /> Archivos Recibidos
           </button>
           <button onClick={() => { setPestanaActiva('miunidad'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'miunidad' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'miunidad' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
-            <FaFolderOpen /> Mi Unidad
+            <FaFolderOpen /> Mi unidad
+          </button>
+          <button onClick={() => { setPestanaActiva('recientes'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'recientes' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'recientes' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
+            <FaClock /> Recientes
           </button>
           <button onClick={() => { setPestanaActiva('enviados'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'enviados' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'enviados' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
             <FaPaperPlane /> Enviados
+          </button>
+          <button onClick={() => { setPestanaActiva('favoritos'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'favoritos' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'favoritos' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
+            <FaStar /> Favoritos
           </button>
           <button onClick={() => { setPestanaActiva('papelera'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'papelera' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'papelera' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
             <FaTrash /> Papelera
@@ -863,15 +887,15 @@ export default function Dashboard() {
               </div>
             )}
 
-            {isLoading ? (
+            {isLoadingVisible ? (
               <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>
             ) : (
               <>
                 {/* MI UNIDAD - Carpetas */}
                 {pestanaActiva === 'miunidad' && personalFolders.length > 0 && (
-                  <div style={{ marginBottom: '30px' }}>
-                    <h4 style={{ marginBottom: '15px', color: 'var(--color-text-medium)', fontSize: '0.85rem', textTransform: 'uppercase' }}>MIS CARPETAS</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+                  <div style={{ marginBottom: '35px' }}>
+                    <h3 style={{ color: 'var(--color-text-medium)', fontSize: '0.9rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '15px' }}>Carpetas Principales</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '15px' }}>
                       {personalFolders.map(folder => renderFolderCard(folder))}
                     </div>
                   </div>
@@ -880,7 +904,7 @@ export default function Dashboard() {
                 {/* MI UNIDAD - Archivos */}
                 {pestanaActiva === 'miunidad' && personalFiles.length > 0 && (
                   <div>
-                    <h4 style={{ marginBottom: '15px', color: 'var(--color-text-medium)', fontSize: '0.85rem', textTransform: 'uppercase' }}>MIS ARCHIVOS</h4>
+                    <h3 style={{ color: 'var(--color-text-medium)', fontSize: '0.9rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '15px' }}>Archivos Sueltos Raíz</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                       {personalFiles.map(file => renderPersonalFileCard(file))}
                     </div>
@@ -896,6 +920,63 @@ export default function Dashboard() {
                     <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px' }}><FaUpload /> Subir archivo</button>
                     <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary"><FaFolderPlus /> Crear carpeta</button>
                   </div>
+                )}
+
+                {/* RECIENTES */}
+                {pestanaActiva === 'recientes' && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                      {recentItems.map(item => (
+                        <div key={item.id || item.itemId} style={{ cursor: 'pointer', backgroundColor: '#1D263C', borderRadius: '12px', padding: '20px', border: elementoDetalle?.id === item.id ? '1px solid #0a3fff' : '1px solid rgba(255,255,255,0.05)' }} onClick={() => setElementoDetalle({ ...item, itemId: item.id || item.itemId, isPersonal: item.isPersonal !== false, tipo: item.type || 'reciente' })}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                            <span style={{ fontSize: '2rem', color: 'var(--color-accent)' }}>{getFileIcon(item.fileType || item.type)}</span>
+                            <span style={{ fontSize: '0.7rem', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: '4px' }}>
+                              {item.accessLevel === 'DOWNLOAD' ? 'Descarga' : 'Solo vista'}
+                            </span>
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: '0.9rem', display: 'flex', alignItems: 'center', color: 'white' }}>
+                            {renderSecurityBadge(item.securityLevel, item.inUnlocked === true, item.hasPassword === true)}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name || item.fileName}</span>
+                          </h3>
+                          <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: 'var(--color-text-medium)' }}>
+                            {formatFileSize(item.fileSize)} • {item.sharedBy || item.uploadedBy || 'Reciente'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {recentItems.length === 0 && (
+                      <div style={{ padding: '60px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                        <FaClock style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }} />
+                        <p>No hay archivos recientes.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* FAVORITOS */}
+                {pestanaActiva === 'favoritos' && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                      {favoriteItems.map(item => (
+                        <div key={item.favoriteId || item.itemId} style={{ backgroundColor: '#1D263C', borderRadius: '12px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                            <span style={{ fontSize: '2rem', color: 'var(--color-accent)' }}>{getFileIcon(item.fileType || item.type)}</span>
+                            <span style={{ fontSize: '0.7rem', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: '4px' }}>
+                              {item.type === 'folder' ? 'Carpeta' : 'Archivo'}
+                            </span>
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name || item.fileName || item.itemName}</h3>
+                          <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: 'var(--color-text-medium)' }}>{item.type === 'folder' ? 'Carpeta favorita' : `${formatFileSize(item.fileSize)} • Favorito`}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {favoriteItems.length === 0 && (
+                      <div style={{ padding: '60px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                        <FaStar style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }} />
+                        <p>No hay favoritos aún.</p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* RECIBIDOS */}

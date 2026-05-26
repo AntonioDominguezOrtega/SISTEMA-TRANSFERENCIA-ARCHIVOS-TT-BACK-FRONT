@@ -21,7 +21,7 @@ export default function TerminosCondiciones() {
             <div className="terms-content" style={{ color: '#444', lineHeight: '1.6' }}>
               <h3>Aviso de Privacidad</h3>
 
-              <h3>1. Idenitdad y Domiciolio del Responsable</h3>
+              <h3>1. Identidad y Domicilio del Responsable</h3>
               <p>
                 El equipo desarrollador del presente sistema, constituido como un proyecto académico
                 bajo el protocolo de Trabajo Terminal de la Escuela Superior de Cómputo (ESCOM-IPN),
@@ -52,8 +52,8 @@ export default function TerminosCondiciones() {
               <p>
                 Con el fin de salvaguardar la confidencialidad de la información, la plataforma implementa un esquema de seguridad
                 avanzado basado en el algoritmo de cifrado simétrico AES-256 ejecutado de manera estrictamente local en el dispositivo del usuario.
-                La plataforma no recopila, no transmite y no almacena las llaves de descifrado del sistema carecen de la capacidad técnica para acceder, visualizar o recuperar el 
-                contenido de los documentos tranferidos.
+                La plataforma no recopila, no transmite y no almacena las llaves de descifrado. El sistema carece de la capacidad técnica para acceder, visualizar o recuperar el
+                contenido de los documentos transferidos.
               </p>
 
               <h3>5. Transferencias de Datos a Terceros y Retención</h3>
@@ -66,7 +66,7 @@ export default function TerminosCondiciones() {
               <h3>6. Derechos de ARCO y Renovación del Consentimiento</h3>
               <p>
                 Usted tiene derecho a conocer qué datos personales mantenemos, para qué los utilizamos y las condiciones del uso que les damos (Acceso); a solicitar la corrección de su información en caso de ser inexacta o incompleta (Rectificación); a que la eliminemos de nuestros registros cuando considere
-                que no está siendo utilizada adecuadamente (Cancelación); así como a oponerse al uso de datos para fines específicos (Oposición). Para ejercer cualquiera de estos derechos ARCO, deberá dirigir una solicitud formal por escrito detallando su petición al correo electrónico oficial del proecto.
+                que no está siendo utilizada adecuadamente (Cancelación); así como a oponerse al uso de datos para fines específicos (Oposición). Para ejercer cualquiera de estos derechos ARCO, deberá dirigir una solicitud formal por escrito detallando su petición al correo electrónico oficial del proyecto.
               </p>
 
               <h3>7. Modificaciones al Aviso de Privacidad</h3>
@@ -108,6 +108,18 @@ export default function TerminosCondiciones() {
               <p>
                 Dada la naturaleza del proyecto, el equipo de desarrollo no se hace responsable por la pérdida de contraseñas 
                 locales generadas durante el proceso de cifrado, ya que estas son necesarias para el acceso final al documento.
+              </p>
+
+              <h3>6. Legislación Aplicable y Jurisdicción</h3>
+              <p>
+                Estos términos se regirán por las leyes mexicanas y cualquier controversia derivada del uso de la plataforma será
+                sometida a los tribunales competentes de la Ciudad de México, salvo disposición legal contraria.
+              </p>
+
+              <h3>7. Contacto</h3>
+              <p>
+                Para cualquier duda o solicitud relacionada con estos Términos y Condiciones y el Aviso de Privacidad,
+                puede escribir al correo electrónico oficial del proyecto o utilizar el formulario de contacto disponible en la plataforma.
               </p>
 
               <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
