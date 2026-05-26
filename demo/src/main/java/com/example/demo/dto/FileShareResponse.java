@@ -44,4 +44,5 @@ public class FileShareResponse {
 
     // Mensaje adjunto
     private String message;
+    private String subject;
 }

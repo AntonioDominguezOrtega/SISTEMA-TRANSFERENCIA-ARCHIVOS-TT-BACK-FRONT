@@ -230,7 +230,13 @@ const storageService = {
   },
   // Obtener URL para vista previa de archivo personal
   getPreviewUrl: async (fileId) => {
+    console.log('🔍 storageService.getPreviewUrl llamado con fileId:', fileId);
     const response = await api.get(`/storage/${fileId}/preview`);
+    console.log('📥 Respuesta de getPreviewUrl:', response.data);
+    return response.data;
+  },
+  getPersonalFileInfo: async (fileId) => {
+    const response = await api.get(`/storage/${fileId}`);
     return response.data;
   },
 };

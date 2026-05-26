@@ -87,6 +87,7 @@ public class FileShareService {
                 metadata.setUploadedBy(currentUser);
                 metadata.setUploadedAt(LocalDateTime.now());
                 metadata.setIsFolder(false);
+                metadata.setIsPersonal(false);  // ← CLAVE: Este archivo NO es personal del usuario, es para compartir
 
                 FileMetadata saveMetadata = fileMetadataRepository.save(metadata);
 
@@ -133,9 +134,9 @@ public class FileShareService {
     @Transactional(readOnly = true)
     public List<FileShareResponse> getReceivedFiles(int page, int size) {
         User currentUser = getCurrentUser();
-        return fileShareRepository.findReceivedShares(currentUser, PageRequest.of(page, size))
+        LocalDateTime now = LocalDateTime.now();
+        return fileShareRepository.findReceivedShares(currentUser, now, PageRequest.of(page, size))
                 .stream()
-                // ✅ FILTRAR: No mostrar archivos donde el remitente soy YO mismo
                 .filter(share -> !share.getSharedBy().getId().equals(currentUser.getId()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -162,15 +163,27 @@ public class FileShareService {
     public String requestSmsToken(String shareId) {
         User currentUser = getCurrentUser();
 
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
-                .orElseThrow(() -> new RuntimeException("Archivo no encnotrado o no tienes acceso"));
+        FileShare share = fileShareRepository.findById(shareId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // ✅ Permitir acceso tanto al receptor (sharedWith) como al emisor (sharedBy)
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        // Si es el emisor, no necesita desbloquear su propio archivo
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+        if (isOwner) {
+            throw new RuntimeException("Eres el propietario del archivo, no necesitas desbloquearlo");
+        }
 
         if (!share.getIsActive() || share.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("El archivo a expirado");
+            throw new RuntimeException("El archivo ha expirado");
         }
 
         if (share.getIsUnlocked() && share.getUnlockedUntil().isAfter(LocalDateTime.now())) {
-            throw new RuntimeException("El archivo ya esta desbloqueado hasta: " + share.getUnlockedUntil());
+            throw new RuntimeException("El archivo ya está desbloqueado hasta: " + share.getUnlockedUntil());
         }
 
         // Generar token de 6 dígitos
@@ -193,7 +206,7 @@ public class FileShareService {
         emailService.sendSimpleMessage(currentUser.getEmail(), "Codigo de desbloqueo - Archivo Seguro", message);
 
         logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_REQUEST, true,
-            "Token enviado a" + maskPhoneNumber(phoneNumber));
+                "Token enviado a " + maskPhoneNumber(phoneNumber));
 
         return "Token enviado exitosamente";
     }
@@ -206,8 +219,20 @@ public class FileShareService {
     public FileShareResponse verifyPassword(String shareId, String password) {
         User currentUser = getCurrentUser();
 
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
+        FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // ✅ Permitir acceso tanto al receptor como al emisor
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        // Si es el emisor, no necesita desbloquear su propio archivo
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+        if (isOwner) {
+            throw new RuntimeException("Eres el propietario del archivo, no necesitas desbloquearlo");
+        }
 
         // Validar que el archivo tenga seguridad por contraseña
         if (share.getSecurityLevel() != SecurityLevel.PASSWORD) {
@@ -240,7 +265,7 @@ public class FileShareService {
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
-        share.setSmsAttempts(0);  // Reiniciamos intentos
+        share.setSmsAttempts(0);
         share.setSmsLastAttemptAt(null);
 
         FileShare updatedShare = fileShareRepository.save(share);
@@ -258,8 +283,21 @@ public class FileShareService {
     @Transactional
     public FileShareResponse verifySmsToken(String shareId, String token) {
         User currentUser = getCurrentUser();
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
+
+        FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // ✅ Permitir acceso tanto al receptor como al emisor
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        // Si es el emisor, no necesita desbloquear su propio archivo
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+        if (isOwner) {
+            throw new RuntimeException("Eres el propietario del archivo, no necesitas desbloquearlo");
+        }
 
         if (share.getSmsAttempts() >= MAX_SMS_ATTEMPTS) {
             throw new RuntimeException("Demasiados intentos fallidos. Solicite un nuevo token");
@@ -286,7 +324,7 @@ public class FileShareService {
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
-        share.setCurrentSmsToken(null); // Borrar el token usado
+        share.setCurrentSmsToken(null);
         share.setSmsTokenExpiresAt(null);
         share.setSmsAttempts(0);
 
@@ -302,52 +340,70 @@ public class FileShareService {
     @Transactional
     public FileShareResponse viewFile(String shareId) {
         User currentUser = getCurrentUser();
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
-                .orElseThrow(() -> new RuntimeException("Archivoo no encontrado"));
 
-        validateFileAcces(share);
+        //  Permitir acceso tanto si eres el receptor como si eres el emisor
+        FileShare share = fileShareRepository.findById(shareId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
-        // Incrementar estadisticas
-        share.setViewCount(share.getViewCount() + 1);
-        share.setLastViewedAt(LocalDateTime.now());
-        fileShareRepository.save(share);
-
-        logAccess(currentUser, share.getFile(), share, AccessAction.VIEW, true, null);
-
-        if (share.getNotifyOnview()) {
-            sendViewNotification(share);
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
         }
+
+        validateFileAccess(share, currentUser);  // ← Modificar este método también
+
+        // Incrementar estadísticas solo si es el receptor (sharedWith)
+        if (share.getSharedWith().getId().equals(currentUser.getId())) {
+            share.setViewCount(share.getViewCount() + 1);
+            share.setLastViewedAt(LocalDateTime.now());
+            fileShareRepository.save(share);
+
+            logAccess(currentUser, share.getFile(), share, AccessAction.VIEW, true, null);
+
+            if (share.getNotifyOnview()) {
+                sendViewNotification(share);
+            }
+        }
+
         return mapToResponse(share);
     }
 
     @Transactional
     public String downloadFile(String shareId) {
         User currentUser = getCurrentUser();
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
+
+        // Permitir acceso tanto si eres el receptor como si eres el emisor
+        FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
-        validateFileAcces(share);
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        validateFileAccess(share, currentUser);
 
         // Regla de Negocio: Validar que el remitente le dio permiso de descarga
         if (share.getAccessLevel() != AccessLevel.DOWNLOAD) {
             throw new RuntimeException("No tienes permiso para descargar este archivo");
         }
 
-        share.setDownloadCount(share.getDownloadCount() + 1);
-        share.setLastDownloadedAt(LocalDateTime.now());
-        fileShareRepository.save(share);
+        // Incrementar estadísticas solo si es el receptor (sharedWith)
+        if (share.getSharedWith().getId().equals(currentUser.getId())) {
+            share.setDownloadCount(share.getDownloadCount() + 1);
+            share.setLastDownloadedAt(LocalDateTime.now());
+            fileShareRepository.save(share);
+
+            logAccess(currentUser, share.getFile(), share, AccessAction.DOWNLOAD, true, null);
+
+            if (share.getNotifyOnDownload()) {
+                sendDonwloadNotification(share);
+            }
+        }
 
         // Generar enlace mágico de Azure válido por 1 hora
-        String downloadUrl = azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
-
-        logAccess(currentUser, share.getFile(), share, AccessAction.DOWNLOAD, true, null);
-
-        if (share.getNotifyOnDownload()) {
-            sendDonwloadNotification(share);
-        }
-        return downloadUrl;
+        return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
     }
-
     // =========================================================================================
     // 5. TAREAS AUTOMÁTICAS (Cron Jobs)
     // =========================================================================================
@@ -440,11 +496,14 @@ public class FileShareService {
 
     // Pasamos los parametros al crear un nuevo archivo
     private FileShare createFileShare(FileMetadata file, User sharedBy, User sharedWith, FileUploadRequest request) {
+        log.info("📝 Creando FileShare - Asunto: '{}', Mensaje: '{}'", request.getSubject(), request.getMessage());
+
         FileShare share = new FileShare();
         share.setFile(file);
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
+        share.setMessage(request.getMessage());  // ← Esta línea debe estar
         share.setSharedAt(LocalDateTime.now());
         share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
@@ -459,9 +518,11 @@ public class FileShareService {
             share.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            share.setUseCustomPhone(request.getUseAccountPhone()); // Pasamos el telefono que se utiliza en la cuenta
-            share.setCustomPhoneNumber(request.getCustomPhoneNumber()); // Pasamos numero so lo cambiamos
+            share.setUseCustomPhone(request.getUseAccountPhone());
+            share.setCustomPhoneNumber(request.getCustomPhoneNumber());
         }
+
+        log.info("📝 FileShare creado - ID: {}, Mensaje guardado: '{}'", share.getId(), share.getMessage());
 
         return share;
     }
@@ -594,22 +655,18 @@ public class FileShareService {
     }
 
     private FileShareResponse mapToResponse(FileShare share) {
-        // Determinar el estado de desbloqueo según el nivel de seguridad
         boolean unlockedStatus;
 
         switch (share.getSecurityLevel()) {
             case PUBLIC:
                 unlockedStatus = true;
                 break;
-
             case PASSWORD:
             case TOKEN_SMS:
-                // Ambos usan el mismo mecanismo de desbloqueo temporal (isUnlocked + unlockedUntil)
                 unlockedStatus = share.getIsUnlocked() != null && share.getIsUnlocked() &&
                         share.getUnlockedUntil() != null &&
                         share.getUnlockedUntil().isAfter(LocalDateTime.now());
                 break;
-
             default:
                 unlockedStatus = false;
                 break;
@@ -630,7 +687,9 @@ public class FileShareService {
                 .unlockedUntil(share.getUnlockedUntil())
                 .viewCount(share.getViewCount())
                 .donwloadCount(share.getDownloadCount())
-                .hasPassword(share.getPasswordHash() != null && !share.getPasswordHash().isEmpty())  // ← Nuevo campo
+                .hasPassword(share.getPasswordHash() != null && !share.getPasswordHash().isEmpty())
+                .subject(share.getSubject())
+                .message(share.getMessage())  // ← CORREGIDO: Ahora envía el mensaje real
                 .build();
     }
 
@@ -669,8 +728,15 @@ public class FileShareService {
     public String getPreviewUrl(String shareId) {
         User currentUser = getCurrentUser();
 
-        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
-                .orElseThrow(() -> new RuntimeException("Archivo no encontrado o no tienes acceso"));
+        // Permitir acceso tanto si eres el receptor (sharedWith) como si eres el emisor (sharedBy)
+        FileShare share = fileShareRepository.findById(shareId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // Validar que el usuario actual sea el receptor O el emisor
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
 
         // Validar que el archivo esté activo y no haya expirado
         if (!share.getIsActive() || share.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -678,7 +744,10 @@ public class FileShareService {
         }
 
         // Si el archivo requiere desbloqueo, verificar que esté desbloqueado
-        if (share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+        // NOTA: Para el emisor (sharedBy), el archivo siempre está desbloqueado (es su archivo)
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+
+        if (!isOwner && share.getSecurityLevel() != SecurityLevel.PUBLIC) {
             boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
                     share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
 
@@ -687,7 +756,42 @@ public class FileShareService {
             }
         }
 
-        // Generar SAS token de solo lectura (válido por 30 minutos)
-        return azureBlobService.generatePreviewUrl(share.getFile().getBlobUrl(), 30);
+        String fileType = share.getFile().getFileType();
+        log.info("📄 FileType desde BD (compartido): {}", fileType);
+
+        return azureBlobService.generatePreviewUrl(share.getFile().getBlobUrl(), 30, fileType);
+    }
+
+    private void validateFileAccess(FileShare share, User currentUser) {
+        if (!share.getIsActive()) {
+            throw new RuntimeException("Este archivo ya no está disponible");
+        }
+        if (share.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Este archivo ha expirado");
+        }
+
+        // Si es el dueño (sharedBy), siempre tiene acceso sin desbloquear
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+
+        if (!isOwner && share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+            if (!share.getIsUnlocked() || share.getUnlockedUntil().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Este archivo está bloqueado. Solicite un token SMS o ingrese la contraseña");
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public FileShareResponse getFileDetails(String shareId) {
+        User currentUser = getCurrentUser();
+
+        FileShare share = fileShareRepository.findById(shareId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        return mapToResponse(share);
     }
 }
