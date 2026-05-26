@@ -17,6 +17,8 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, String> {
 
+    void deleteByFileShare_Id(String shareId);
+
     // HISTORIAL: Trae todas las notificaciones de un usuario, de la más nueva a la más vieja.
     Page<Notification> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 

@@ -20,6 +20,7 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     Optional<Favorite> findByUserAndFileShare(User user, FileShare fileShare);
 
     void deleteByUserAndFileMetadata(User user, FileMetadata fileMetadata);
-
+    void deleteByFileMetadata_Id(String fileId);
+    void deleteByFileShare_Id(String shareId);
     void deleteByUserAndFileShare(User user, FileShare fileShare);
 }

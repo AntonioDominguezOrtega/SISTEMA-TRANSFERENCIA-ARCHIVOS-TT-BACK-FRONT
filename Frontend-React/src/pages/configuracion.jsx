@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PrivateLayout from '../components/PrivateLayout';
 import { Link } from 'react-router-dom';
-import profileService from '../services/profileService';
+import profileService from '../services/configService';
 
 export default function Configuracion() {
   // Estado para los datos del formulario (los que el usuario edita)

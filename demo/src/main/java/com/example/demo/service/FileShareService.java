@@ -327,6 +327,19 @@ public class FileShareService {
     // =========================================================================================
     // 4. ACCESO AL ARCHIVO Y DESCARGA
     // =========================================================================================
+    @Transactional(readOnly = true)
+    public String getPreviewUrl(String shareId) {
+        User currentUser = getCurrentUser();
+        FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // Validamos si el archivo expiró o está bloqueado por contraseña/SMS
+        validateFileAcces(share);
+
+        // Generar enlace mágico de Azure válido por 1 hora (60 minutos)
+        return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
+    }
+
     @Transactional
     public FileShareResponse viewFile(String shareId) {
         User currentUser = getCurrentUser();

@@ -105,7 +105,7 @@ public class AuthService {
         if (!smsSent) {
             log.info("Enviando código OTP por correo electrónico como respaldo a {}", user.getEmail());
             // Reutilizamos tu método de EmailService que envía el HTML con el código
-            emailService.sendPasswordResetCodeEmail(user.getEmail(), verificationCode, user.getNombre());
+            emailService.sendAccountVerificationEmail(user.getEmail(), verificationCode, user.getNombre());
         }
 
         // NUEVO: Crear estructura de almacenamiento personal

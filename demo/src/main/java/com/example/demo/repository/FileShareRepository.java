@@ -17,6 +17,8 @@ import java.util.Optional;
 @Repository
 public interface FileShareRepository extends JpaRepository<FileShare, String> {
 
+    List<FileShare> findByFile_Id(String fileId);
+
     // BANDEJA DE ENTRADA: Archivos que ME han compartido y aún no han caducado (isActive = true).
     @Query("SELECT fs FROM FileShare fs WHERE fs.sharedWith = :user AND fs.isActive = true")
     Page<FileShare> findReceivedShares(@Param("user") User user, Pageable pageable);

@@ -427,7 +427,7 @@ public class StorageService {
             throw new RuntimeException("No puedes eliminar elementos que no te pertenecen");
         }
 
-        // Eliminar físicamente de Azure
+        // 1. Eliminar físicamente el blob de Microsoft Azure
         if (!item.getIsFolder() && item.getBlobUrl() != null) {
             try {
                 azureBlobService.delateFile(item.getBlobUrl());
@@ -436,14 +436,30 @@ public class StorageService {
             }
         }
 
-        // Eliminar FileShare asociado
+        // 2. LIMPIEZA DE RASTRO EN BASE DE DATOS (Cascade Delete)
+        // a) Borrar logs de acceso que apuntan directo a este archivo
+        accessLogRepository.deleteByFile_Id(itemId);
+        
+        // b) Borrar de favoritos si el dueño lo tenía agregado
+        favoriteRepository.deleteByFileMetadata_Id(itemId);
+
+        // c) Si es un archivo compartido, debemos destruir todo el árbol de dependencias
         if (!item.getIsFolder()) {
-            fileShareRepository.findByFile_IdAndSharedWith(item.getId(), currentUser)
-                    .ifPresent(fileShareRepository::delete);
+            List<FileShare> shares = fileShareRepository.findByFile_Id(itemId);
+            for (FileShare share : shares) {
+                // Borrar rastro de cada instancia compartida
+                accessLogRepository.deleteByFileShare_Id(share.getId());
+                favoriteRepository.deleteByFileShare_Id(share.getId());
+                notificationRepository.deleteByFileShare_Id(share.getId());
+                
+                // Finalmente borrar la relación de compartido
+                fileShareRepository.delete(share);
+            }
         }
 
+        // 3. Finalmente, ahora que no hay hijos, podemos eliminar la metadata principal
         fileMetadataRepository.delete(item);
-        log.info("Elemento eliminado permanentemente: '{}'", item.getFileName());
+        log.info("Elemento eliminado permanentemente y rastro limpiado: '{}'", item.getFileName());
     }
 
     // ==============================================================
@@ -588,6 +604,25 @@ public class StorageService {
         share.setLastDownloadedAt(LocalDateTime.now());
         fileShareRepository.save(share);
 
+        return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
+    }
+
+    @Transactional(readOnly = true)
+    public String getPreviewUrl(String fileId) {
+        User currentUser = getCurrentUser();
+        FileShare share = getPersonalFileShare(fileId, currentUser);
+
+        // Validar que esté desbloqueado si requiere seguridad extra
+        if (share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+            boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
+                    share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
+
+            if (!isUnlocked) {
+                throw new RuntimeException("Archivo bloqueado. Debes desbloquearlo primero");
+            }
+        }
+
+        // Generar SAS token de Azure válido por 1 hora para el visor de PDFs/Imágenes
         return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
     }
 

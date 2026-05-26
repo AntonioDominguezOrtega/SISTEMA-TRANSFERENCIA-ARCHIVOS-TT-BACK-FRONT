@@ -16,6 +16,9 @@ import java.util.List;
 @Repository
 public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
 
+    void deleteByFile_Id(String fileId);
+    void deleteByFileShare_Id(String shareId);
+
     // HISTORIAL DEL USUARIO: Para mostrarle en su panel "Actividad reciente" (Paginado).
     Page<AccessLog> findByUserOrderByTimestampDesc(User user, Pageable pageable);
 
