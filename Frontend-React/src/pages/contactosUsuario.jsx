@@ -186,9 +186,8 @@ export default function ContactosUsuario() {
                     <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
                       <button 
                         className="btn btn-primary" 
-                        style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }}
-                        // 🌟 Aquí usamos userId, que es el ID del usuario en sí, no el ID de la relación de contacto
-                        onClick={() => navigate(`/subir-archivo?to=${contacto.userId}`)}
+                        style={{ flex: 1, padding: '8px', fontSize: '0.8rem', backgroundColor: '#0a3fff', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer' }}
+                        onClick={() => navigate(`/enviar-archivo?to=${contacto.userId}`)}
                       >
                         Enviar Archivo
                       </button>
@@ -202,21 +201,21 @@ export default function ContactosUsuario() {
                       </button>
                     </div>
                   </article>
-                ))}
-              </div>
+                );
+              })}
+            </div>
 
-              {contactosFiltrados.length === 0 && !cargando && (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
-                  No se encontraron contactos en tu red personal.
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            {contactosFiltrados.length === 0 && !cargando && (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
+                No se encontraron contactos en tu red personal.
+              </div>
+            )}
+          </>
+        )}
       </main>
 
       {/* =======================================================
-          🌟 MODAL FLOTANTE INTERACTIVO CON BÚSQUEDA EN VIVO
+          MODAL DE BÚSQUEDA GLOBAL CON FOTOS DE PERFIL
           ======================================================= */}
       {showModalBusqueda && (
         <div className="modal-overlay" style={{
@@ -308,10 +307,9 @@ export default function ContactosUsuario() {
                 </div>
               )}
 
-              {/* Caso C: Estado inicial del modal */}
               {inputBusquedaGlobal.trim().length < 2 && (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-medium)', fontSize: '0.85rem', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                  Escribe al menos 2 letras para consultar el directorio corporativo.
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--color-text-medium)', fontSize: '0.85rem', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                  Escribe al menos 2 letras para buscar
                 </div>
               )}
             </div>

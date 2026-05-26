@@ -169,12 +169,14 @@ public class StorageService {
                     .stream()
                     .filter(item -> !Boolean.TRUE.equals(item.getIsDeleted()))
                     .filter(item -> item.getUploadedBy().getId().equals(currentUser.getId()))
+                    .filter(item -> Boolean.TRUE.equals(item.getIsPersonal()) || Boolean.TRUE.equals(item.getIsFolder()))  // ← CLAVE: Solo personales o carpetas
                     .collect(Collectors.toList());
         } else {
             contents = fileMetadataRepository.findByParentFolder(null)
                     .stream()
                     .filter(item -> !Boolean.TRUE.equals(item.getIsDeleted()))
                     .filter(item -> item.getUploadedBy().getId().equals(currentUser.getId()))
+                    .filter(item -> Boolean.TRUE.equals(item.getIsPersonal()) || Boolean.TRUE.equals(item.getIsFolder()))  // ← CLAVE: Solo personales o carpetas
                     .collect(Collectors.toList());
         }
 
@@ -225,7 +227,7 @@ public class StorageService {
 
         // Validar carpeta destino
         FileMetadata parentFolder = null;
-        if (request.getParentFolderId() != null) {
+        if (request.getParentFolderId() != null && !request.getParentFolderId().isEmpty()) {
             parentFolder = fileMetadataRepository.findById(request.getParentFolderId())
                     .orElseThrow(() -> new RuntimeException("Carpeta destino no encontrada"));
 
@@ -243,16 +245,17 @@ public class StorageService {
             var aesKey = encryptionService.generateAesKey();
             byte[] iv = encryptionService.generateIv();
 
-            // 2. Cifrar el archivo (implementación pendiente - usar EncryptionService)
-            // Por ahora subimos sin cifrar, pero debes implementar el cifrado real
-            // String encryptedContent = encryptionService.encrypt(file.getBytes(), aesKey, iv);
-
-// 3. Generar nombre único para el blob
-            String blobName = UUID.randomUUID().toString() + "_" + System.currentTimeMillis();
-            log.info("🔵 BlobName generado: {}", blobName);  // ← LOG PARA DEPURAR
+            // ✅ 2. Generar nombre para el blob CON extensión
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String blobName = UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + extension;
+            log.info("🔵 BlobName generado con extensión: {}", blobName);
 
             String blobUrl = azureBlobService.uploadEncryptedFileWithName(file, "", iv, blobName);
-            log.info("🔵 BlobUrl recibido: {}", blobUrl);  // ← LOG PARA DEPURAR
+            log.info("🔵 BlobUrl recibido: {}", blobUrl);
 
 // 4. Guardar metadata
             FileMetadata metadata = new FileMetadata();
@@ -307,6 +310,7 @@ public class StorageService {
         share.setSelfDestruct(false);
         share.setIsActive(true);
         share.setIsUnlocked(false);
+        share.setMessage(null);
 
         // Configurar según nivel de seguridad
         if (request.getSecurityLevel() == SecurityLevel.PASSWORD) {
@@ -427,41 +431,36 @@ public class StorageService {
             throw new RuntimeException("No puedes eliminar elementos que no te pertenecen");
         }
 
-        // 1. Eliminar físicamente el blob de Microsoft Azure
-        if (!item.getIsFolder() && item.getBlobUrl() != null) {
-            try {
-                azureBlobService.delateFile(item.getBlobUrl());
-            } catch (Exception e) {
-                log.warn("Error al eliminar archivo de Azure: {}", e.getMessage());
+        try {
+            // Eliminar FileShare asociados
+            if (!item.getIsFolder()) {
+                List<FileShare> shares = fileShareRepository.findByFile_Id(item.getId());
+                for (FileShare share : shares) {
+                    deleteShareReferences(share);
+                    fileShareRepository.delete(share);
+                }
+            } else {
+                deleteFolderContentsRecursively(item);
             }
-        }
 
-        // 2. LIMPIEZA DE RASTRO EN BASE DE DATOS (Cascade Delete)
-        // a) Borrar logs de acceso que apuntan directo a este archivo
-        accessLogRepository.deleteByFile_Id(itemId);
-        
-        // b) Borrar de favoritos si el dueño lo tenía agregado
-        favoriteRepository.deleteByFileMetadata_Id(itemId);
-
-        // c) Si es un archivo compartido, debemos destruir todo el árbol de dependencias
-        if (!item.getIsFolder()) {
-            List<FileShare> shares = fileShareRepository.findByFile_Id(itemId);
-            for (FileShare share : shares) {
-                // Borrar rastro de cada instancia compartida
-                accessLogRepository.deleteByFileShare_Id(share.getId());
-                favoriteRepository.deleteByFileShare_Id(share.getId());
-                notificationRepository.deleteByFileShare_Id(share.getId());
-                
-                // Finalmente borrar la relación de compartido
-                fileShareRepository.delete(share);
+            // Eliminar de Azure (ignorar errores 404)
+            if (!item.getIsFolder() && item.getBlobUrl() != null && !item.getBlobUrl().isEmpty()) {
+                try {
+                    azureBlobService.delateFile(item.getBlobUrl());
+                } catch (Exception e) {
+                    log.warn("Archivo no encontrado en Azure (ignorando): {}", item.getBlobUrl());
+                }
             }
-        }
 
-        // 3. Finalmente, ahora que no hay hijos, podemos eliminar la metadata principal
-        fileMetadataRepository.delete(item);
-        log.info("Elemento eliminado permanentemente y rastro limpiado: '{}'", item.getFileName());
+            // Eliminar metadata
+            fileMetadataRepository.delete(item);
+            log.info("Elemento eliminado permanentemente: '{}'", item.getFileName());
+
+        } catch (Exception e) {
+            log.error("Error eliminando elemento: {}", e.getMessage());
+            throw new RuntimeException("Error al eliminar el elemento: " + e.getMessage());
+        }
     }
-
     // ==============================================================
     // 4. ACCESO A ARCHIVOS PERSONALES (DESBLOQUEO)
     // ==============================================================
@@ -490,7 +489,9 @@ public class StorageService {
             log.warn("Error al enviar SMS: {}", e.getMessage());
         }
 
-        emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
+        emailService.sendSimpleMessage(currentUser.getEmail(),
+                "Código de desbloqueo",
+                "Tu código para desbloquear '" + share.getFile().getFileName() + "' es: " + token);
 
         return "Token enviado exitosamente";
     }
@@ -746,6 +747,7 @@ public class StorageService {
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
+        share.setMessage(request.getMessage());  // ← AGREGAR ESTA LÍNEA (si no existe)
         share.setSharedAt(LocalDateTime.now());
         share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
@@ -886,7 +888,8 @@ public class StorageService {
                 .viewCount(share.getViewCount())
                 .donwloadCount(share.getDownloadCount())
                 .hasPassword(share.getPasswordHash() != null && !share.getPasswordHash().isEmpty())
-                .message(null) // El mensaje no se guarda en FileShare por ahora
+                .subject(share.getSubject())
+                .message(share.getMessage())  // ← CORREGIDO
                 .build();
     }
 
@@ -986,18 +989,26 @@ public class StorageService {
     private StorageItemResponse mapToStorageResponse(FileMetadata item, User currentUser) {
         log.info("📦 Mapeando item: {} (isFolder: {})", item.getFileName(), item.getIsFolder());
 
-        Boolean isUnlocked = true;  // Por defecto true para archivos personales
+        // Valores por defecto
+        String securityLevel = "PUBLIC";
+        String accessLevel = "DOWNLOAD";
+        Boolean isUnlocked = true;
         LocalDateTime unlockedUntil = null;
+        Boolean hasPassword = false;
 
         // Solo buscar FileShare si NO es una carpeta (los archivos personales tienen FileShare)
         if (!item.getIsFolder()) {
             Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(item.getId(), currentUser);
             if (share.isPresent()) {
                 FileShare fs = share.get();
+                securityLevel = fs.getSecurityLevel().toString();
+                accessLevel = fs.getAccessLevel().toString();
+                hasPassword = fs.getPasswordHash() != null && !fs.getPasswordHash().isEmpty();
                 isUnlocked = fs.getIsUnlocked() != null && fs.getIsUnlocked() &&
                         fs.getUnlockedUntil() != null && fs.getUnlockedUntil().isAfter(LocalDateTime.now());
                 unlockedUntil = fs.getUnlockedUntil();
-                log.info("  🔓 Archivo con FileShare - isUnlocked: {}", isUnlocked);
+                log.info("  🔓 Archivo con FileShare - securityLevel: {}, accessLevel: {}, isUnlocked: {}",
+                        securityLevel, accessLevel, isUnlocked);
             } else {
                 log.info("  📄 Archivo personal SIN FileShare - siempre desbloqueado");
             }
@@ -1011,13 +1022,13 @@ public class StorageService {
                 .fileType(item.getFileType())
                 .fileSize(item.getFileSize())
                 .uploadedAt(item.getUploadedAt())
-                .isLocked(false)
-                .isUnlocked(isUnlocked)
-                .unlockedUntil(unlockedUntil)
+                .securityLevel(securityLevel)      // ← NUEVO: Nivel de seguridad
+                .accessLevel(accessLevel)          // ← NUEVO: Permiso (DOWNLOAD/READ_ONLY)
+                .hasPassword(hasPassword)          // ← NUEVO: Si tiene contraseña
+                .isLocked(!isUnlocked && !"PUBLIC".equals(securityLevel))  // ← NUEVO: Si está bloqueado
+                .isUnlocked(isUnlocked)            // ← NUEVO: Si está desbloqueado
+                .unlockedUntil(unlockedUntil)      // ← NUEVO: Hasta cuándo está desbloqueado
                 .build();
-
-        log.info("  ✅ Respuesta construida: name={}, isFolder={}", response.getName(), response.getIsFolder());
-        return response;
     }
 
     private SecurityLevel getPersonalFileShareSecurityLevel(FileMetadata item, User user) {
@@ -1120,23 +1131,24 @@ public class StorageService {
     public FavoriteResponse addFavorite(String itemId, String type) {
         User currentUser = getCurrentUser();
 
-        // Validar que no exista ya en favoritos
+        // Verificar si es una carpeta (PERSONAL con isFolder = true)
         if ("PERSONAL".equals(type)) {
-            FileMetadata file = fileMetadataRepository.findById(itemId)
-                    .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+            FileMetadata item = fileMetadataRepository.findById(itemId)
+                    .orElseThrow(() -> new RuntimeException("Elemento no encontrado"));
 
-            if (!file.getUploadedBy().getId().equals(currentUser.getId())) {
-                throw new RuntimeException("No puedes agregar a favoritos un archivo que no te pertenece");
+            if (!item.getUploadedBy().getId().equals(currentUser.getId())) {
+                throw new RuntimeException("No puedes agregar a favoritos un elemento que no te pertenece");
             }
 
-            Optional<Favorite> existing = favoriteRepository.findByUserAndFileMetadata(currentUser, file);
+            // Verificar si ya existe
+            Optional<Favorite> existing = favoriteRepository.findByUserAndFileMetadata(currentUser, item);
             if (existing.isPresent()) {
-                throw new RuntimeException("El archivo ya está en favoritos");
+                throw new RuntimeException("El elemento ya está en favoritos");
             }
 
             Favorite favorite = new Favorite();
             favorite.setUser(currentUser);
-            favorite.setFileMetadata(file);
+            favorite.setFileMetadata(item);  // Puede ser carpeta o archivo
             favorite.setFavoritedAt(LocalDateTime.now());
             Favorite saved = favoriteRepository.save(favorite);
 
@@ -1249,23 +1261,116 @@ public class StorageService {
 
         int count = 0;
         for (FileMetadata item : deletedItems) {
-            // Eliminar permanentemente (físico de Azure + BD)
-            permanentDelete(item.getId());
-            count++;
+            try {
+                // 1. Primero eliminar los FileShare asociados (si existen)
+                if (!item.getIsFolder()) {
+                    // Buscar y eliminar FileShares
+                    List<FileShare> shares = fileShareRepository.findByFile_Id(item.getId());
+                    for (FileShare share : shares) {
+                        // Eliminar referencias en otras tablas
+                        deleteShareReferences(share);
+                        // Eliminar el share
+                        fileShareRepository.delete(share);
+                    }
+                }
+
+                // 2. Si es carpeta, procesar su contenido recursivamente
+                if (item.getIsFolder()) {
+                    deleteFolderContentsRecursively(item);
+                }
+
+                // 3. Intentar eliminar de Azure (ignorar si no existe)
+                if (!item.getIsFolder() && item.getBlobUrl() != null && !item.getBlobUrl().isEmpty()) {
+                    try {
+                        azureBlobService.delateFile(item.getBlobUrl());
+                    } catch (Exception e) {
+                        // Si el archivo no existe en Azure, solo logueamos y continuamos
+                        log.warn("Archivo no encontrado en Azure (ignorando): {}", item.getBlobUrl());
+                    }
+                }
+
+                // 4. Finalmente eliminar el metadata
+                fileMetadataRepository.delete(item);
+                count++;
+
+            } catch (Exception e) {
+                log.error("Error al eliminar elemento {}: {}", item.getId(), e.getMessage());
+                // No lanzamos excepción para continuar con los demás elementos
+            }
         }
 
         log.info("Papelera vaciada para usuario: {}, {} elementos eliminados",
                 currentUser.getUsername(), count);
 
-        return count;
+        // Forzar flush para que la transacción se complete
+    /**
+     * Eliminar referencias de un FileShare en otras tablas
+     */
+    private void deleteShareReferences(FileShare share) {
+        try {
+            // Eliminar notificaciones
+            notificationRepository.deleteByFileShare(share);
+        } catch (Exception e) {
+            log.warn("Error eliminando notificaciones: {}", e.getMessage());
+        }
+
+        try {
+            // Eliminar favoritos
+            favoriteRepository.deleteByFileShare(share);
+        } catch (Exception e) {
+            log.warn("Error eliminando favoritos: {}", e.getMessage());
+        }
+
+        try {
+            // Eliminar logs de acceso
+            accessLogRepository.deleteByFileShare(share);
+        } catch (Exception e) {
+            log.warn("Error eliminando logs: {}", e.getMessage());
+        }
     }
 
+    /**
+     * Eliminar recursivamente el contenido de una carpeta (solo metadata, no Azure)
+     */
+    private void deleteFolderContentsRecursively(FileMetadata folder) {
+        List<FileMetadata> contents = fileMetadataRepository.findByParentFolder(folder);
+
+        for (FileMetadata item : contents) {
+            if (item.getIsFolder()) {
+                deleteFolderContentsRecursively(item);
+            } else {
+                // Eliminar FileShares
+                List<FileShare> shares = fileShareRepository.findByFile_Id(item.getId());
+                for (FileShare share : shares) {
+                    deleteShareReferences(share);
+                    fileShareRepository.delete(share);
+                }
+            }
+            fileMetadataRepository.delete(item);
+        }
+    }
+
+    private void deleteSharesForFolderContents(FileMetadata folder) {
+        List<FileMetadata> contents = fileMetadataRepository.findByParentFolder(folder);
+        for (FileMetadata item : contents) {
+            if (item.getIsFolder()) {
+                deleteSharesForFolderContents(item);
+            } else {
+                List<FileShare> shares = fileShareRepository.findByFile_Id(item.getId());
+                for (FileShare share : shares) {
+                    notificationRepository.deleteByFileShare(share);
+                    favoriteRepository.deleteByFileShare(share);
+                    accessLogRepository.deleteByFileShare(share);
+                    fileShareRepository.delete(share);
+                }
+            }
+        }
+    }
 // ==============================================================
 // 10. CADUCADOS
 // ==============================================================
 
     @Transactional(readOnly = true)
-    public List<ExpiredShareResponse> getExpiredShares() {
         User currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
 
@@ -1284,18 +1389,25 @@ public class StorageService {
     private FavoriteResponse mapToFavoriteResponse(Favorite favorite) {
         if (favorite.getFileMetadata() != null) {
             FileMetadata f = favorite.getFileMetadata();
+            boolean isFolder = Boolean.TRUE.equals(f.getIsFolder());
+
             return FavoriteResponse.builder()
                     .favoriteId(favorite.getId())
                     .itemId(f.getId())
                     .name(f.getFileName())
                     .type("PERSONAL")
-                    .fileType(f.getFileType())
+                    .isFolder(isFolder)
+                    .folderColor(isFolder ? f.getFolderColor() : null)  // ← AGREGAR COLOR
+                    .fileType(isFolder ? "folder" : f.getFileType())
                     .fileSize(f.getFileSize())
                     .createdAt(f.getUploadedAt())
                     .favoritedAt(favorite.getFavoritedAt())
                     .sharedBy(null)
-                    .isUnlocked(false)
+                    .securityLevel(isFolder ? "PUBLIC" : null)
+                    .accessLevel(isFolder ? "DOWNLOAD" : null)
+                    .isUnlocked(true)
                     .isExpired(false)
+                    .parentFolderId(f.getParentFolder() != null ? f.getParentFolder().getId() : null)
                     .build();
         } else {
             FileShare s = favorite.getFileShare();
@@ -1309,11 +1421,15 @@ public class StorageService {
                     .itemId(s.getId())
                     .name(f.getFileName())
                     .type("SHARED")
+                    .isFolder(false)
+                    .folderColor(null)
                     .fileType(f.getFileType())
                     .fileSize(f.getFileSize())
                     .createdAt(s.getSharedAt())
                     .favoritedAt(favorite.getFavoritedAt())
                     .sharedBy(s.getSharedBy().getNombre() + " " + s.getSharedBy().getApellido())
+                    .securityLevel(s.getSecurityLevel().toString())
+                    .accessLevel(s.getAccessLevel().toString())
                     .isUnlocked(isUnlocked)
                     .isExpired(isExpired)
                     .build();
@@ -1351,5 +1467,47 @@ public class StorageService {
                 .accessLevel(share.getAccessLevel().toString())
                 .securityLevel(share.getSecurityLevel().toString())
                 .build();
+    }
+
+// En StorageService.java, agrega este método:
+
+    /**
+     * Genera URL para vista previa de archivo personal (solo lectura)
+     */
+    @Transactional(readOnly = true)
+    public String getPreviewUrl(String fileId) {
+        User currentUser = getCurrentUser();
+
+        FileMetadata file = fileMetadataRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // Verificar que el usuario es el dueño
+        if (!file.getUploadedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        // Verificar que el archivo no esté eliminado
+        if (Boolean.TRUE.equals(file.getIsDeleted())) {
+            throw new RuntimeException("El archivo está en la papelera");
+        }
+
+        // Si el archivo tiene seguridad, verificar que esté desbloqueado
+        if (!file.getIsFolder()) {
+            Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(fileId, currentUser);
+            if (share.isPresent() && share.get().getSecurityLevel() != SecurityLevel.PUBLIC) {
+                boolean isUnlocked = share.get().getIsUnlocked() != null && share.get().getIsUnlocked() &&
+                        share.get().getUnlockedUntil() != null && share.get().getUnlockedUntil().isAfter(LocalDateTime.now());
+
+                if (!isUnlocked) {
+                    throw new RuntimeException("El archivo está bloqueado. Desbloquéalo primero.");
+                }
+            }
+        }
+
+        // ✅ Pasar el fileType al método de Azure
+        String fileType = file.getFileType();
+        log.info("📄 FileType desde BD: {}", fileType);
+
+        return azureBlobService.generatePreviewUrl(file.getBlobUrl(), 30, fileType);
     }
 }

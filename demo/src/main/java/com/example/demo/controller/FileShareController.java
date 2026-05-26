@@ -190,9 +190,8 @@ public class FileShareController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getFileDetails(@PathVariable String shareId) {
         try {
-            // Crear despues el servicio 'getFileDetails'.
-            // Por ahora solo es un esqueleto de respuesta.
-            return ResponseEntity.ok(Map.of("shareId", shareId));
+            FileShareResponse response = fileShareService.getFileDetails(shareId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

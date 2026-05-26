@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
 import FileViewerModal from '../components/FileViewerModal';
+import FileDetailPanel from '../components/FileDetailPanel';
 import dashboardService from '../services/dashboardService';
 import storageService from '../services/storageService';
 
@@ -51,22 +52,41 @@ const formatFileSize = (bytes) => {
 };
 
 // Formatear fecha
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'Fecha no disponible';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'Fecha no disponible';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Justo ahora';
-  if (diffMins < 60) return `Hace ${diffMins} minutos`;
-  if (diffHours < 24) return `Hace ${diffHours} horas`;
-  if (diffDays === 1) return 'Ayer';
-  if (diffDays < 7) return `Hace ${diffDays} días`;
-  return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
-};
+    // Si la fecha es FUTURA (expiración), mostrar fecha normal
+    if (date > now) {
+      return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    // Para fechas pasadas
+    if (diffMins < 1) return 'Justo ahora';
+    if (diffMins < 60) return `Hace ${diffMins} minutos`;
+    if (diffHours < 24) return `Hace ${diffHours} horas`;
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  // También agrega esta función para formatear fechas de expiración
+  const formatExpirationDate = (dateStr) => {
+    if (!dateStr) return 'Fecha no disponible';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return `Expiró hace ${Math.abs(diffDays)} días`;
+    if (diffDays === 0) return `Expira hoy`;
+    if (diffDays === 1) return `Expira mañana`;
+    return `Expira en ${diffDays} días`;
+  };
 
 // Formatear fecha completa para detalles
 const formatFullDate = (dateStr) => {
@@ -147,8 +167,9 @@ export default function Dashboard() {
     try {
       const result = await storageService.getFavorites();
       const favoriteList = result.favorites || result || [];
-      setFavoritos(favoriteList);
+      setFavoritos(result.favorites || []);
       setFavoriteItems(favoriteList);
+      
     } catch (err) {
       console.error('Error cargando favoritos:', err);
     }
@@ -180,7 +201,10 @@ export default function Dashboard() {
       } 
       else if (pestanaActiva === 'enviados') {
         const result = await dashboardService.getSentFiles(0, 50);
-        setSentFiles(result.files || []);
+        const sentFilesList = result.files || [];
+        // Ordenar por fecha de envío, más reciente primero
+        sentFilesList.sort((a, b) => new Date(b.sharedAt) - new Date(a.sharedAt));
+        setSentFiles(sentFilesList);
       }
       else if (pestanaActiva === 'miunidad') {
         const result = await storageService.getFolderContents(currentFolderId);
@@ -488,24 +512,20 @@ export default function Dashboard() {
       let canDownload = false;
       
       if (isPersonal) {
-        // Para archivos personales, el dueño siempre puede descargar
         const previewResult = await storageService.getPreviewUrl(itemId);
         previewUrl = previewResult.previewUrl;
         result = await storageService.openPersonalFile(itemId);
-        canDownload = true; // El dueño siempre puede descargar
-        // Obtener URL de descarga solo si es necesario
+        canDownload = true;
         if (canDownload) {
           const downloadResult = await storageService.downloadPersonalFile(itemId);
           downloadUrl = downloadResult.downloadUrl;
         }
       } else {
-        // Para archivos compartidos, verificar el permiso
         const { default: fileShareService } = await import('../services/fileShareService');
         const previewResult = await fileShareService.getPreviewUrl(itemId);
         previewUrl = previewResult.previewUrl;
         result = await fileShareService.viewFile(itemId);
         
-        // Verificar si el usuario tiene permiso de descarga
         const fileInfo = result.file || result;
         canDownload = fileInfo.accessLevel === 'DOWNLOAD';
         
@@ -707,17 +727,48 @@ export default function Dashboard() {
     const isUnlocked = item.inUnlocked === true;
     const hasPassword = item.hasPassword === true;
     
+    // Verificar si el archivo ha expirado
+    const isExpired = item.expiresAt && new Date(item.expiresAt) < new Date();
+    
     return (
       <article 
         key={item.shareId} 
-        onClick={() => setElementoDetalle({ 
+        onClick={() => !isExpired && setElementoDetalle({ 
           ...item, 
           itemId: item.shareId, 
           isPersonal: false, 
           tipo: 'recibido' 
         })}
-        style={{ cursor: 'pointer', backgroundColor: '#1D263C', borderRadius: '12px', padding: '20px', border: elementoDetalle?.shareId === item.shareId ? '1px solid #0a3fff' : '1px solid rgba(255,255,255,0.05)' }}
+        style={{ 
+          cursor: isExpired ? 'not-allowed' : 'pointer', 
+          backgroundColor: '#1D263C', 
+          borderRadius: '12px', 
+          padding: '20px', 
+          border: isExpired 
+            ? '2px solid #f5222d' 
+            : (elementoDetalle?.shareId === item.shareId ? '1px solid #0a3fff' : '1px solid rgba(255,255,255,0.05)'),
+          opacity: isExpired ? 0.6 : 1,
+          position: 'relative',
+          transition: 'all 0.2s'
+        }}
       >
+        {/* Badge de EXPIRADO */}
+        {isExpired && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            backgroundColor: '#f5222d',
+            color: 'white',
+            fontSize: '0.7rem',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontWeight: 'bold'
+          }}>
+            EXPIRADO
+          </div>
+        )}
+        
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
           <span style={{ fontSize: '2rem', color: 'var(--color-accent)' }}>{getFileIcon(item.fileType)}</span>
           <span style={{ fontSize: '0.7rem', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: '4px' }}>
@@ -725,7 +776,7 @@ export default function Dashboard() {
           </span>
         </div>
         <h3 style={{ margin: 0, fontSize: '0.9rem', display: 'flex', alignItems: 'center', color: 'white' }}>
-          {renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword)}
+          {!isExpired && renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword)}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.fileName}</span>
         </h3>
         <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: 'var(--color-text-medium)' }}>
@@ -734,6 +785,16 @@ export default function Dashboard() {
         <p style={{ margin: '2px 0 0 0', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
           Recibido {formatDate(item.sharedAt)}
         </p>
+        {item.expiresAt && (
+          <p style={{ 
+            margin: '4px 0 0 0', 
+            fontSize: '0.65rem', 
+            color: isExpired ? '#f5222d' : '#faad14',
+            fontWeight: isExpired ? 'bold' : 'normal'
+          }}>
+            {isExpired ? `Expiró: ${formatFullDate(item.expiresAt)}` : formatExpirationDate(item.expiresAt)}
+          </p>
+        )}
       </article>
     );
   };
@@ -742,17 +803,48 @@ export default function Dashboard() {
     const isUnlocked = item.inUnlocked === true;
     const hasPassword = item.hasPassword === true;
     
+    // Verificar si el archivo ha expirado
+    const isExpired = item.expiresAt && new Date(item.expiresAt) < new Date();
+    
     return (
       <article 
         key={item.shareId} 
-        onClick={() => setElementoDetalle({ 
+        onClick={() => !isExpired && setElementoDetalle({ 
           ...item, 
           itemId: item.shareId, 
           isPersonal: false, 
           tipo: 'enviado' 
         })}
-        style={{ cursor: 'pointer', backgroundColor: '#1D263C', borderRadius: '12px', padding: '20px', border: elementoDetalle?.shareId === item.shareId ? '1px solid #0a3fff' : '1px solid rgba(255,255,255,0.05)' }}
+        style={{ 
+          cursor: isExpired ? 'not-allowed' : 'pointer', 
+          backgroundColor: '#1D263C', 
+          borderRadius: '12px', 
+          padding: '20px', 
+          border: isExpired 
+            ? '2px solid #f5222d' 
+            : (elementoDetalle?.shareId === item.shareId ? '1px solid #0a3fff' : '1px solid rgba(255,255,255,0.05)'),
+          opacity: isExpired ? 0.6 : 1,
+          position: 'relative',
+          transition: 'all 0.2s'
+        }}
       >
+        {/* Badge de EXPIRADO */}
+        {isExpired && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            backgroundColor: '#f5222d',
+            color: 'white',
+            fontSize: '0.7rem',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontWeight: 'bold'
+          }}>
+            EXPIRADO
+          </div>
+        )}
+        
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
           <span style={{ fontSize: '2rem', color: 'var(--color-accent)' }}>{getFileIcon(item.fileType)}</span>
           <span style={{ fontSize: '0.7rem', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: '4px' }}>
@@ -760,7 +852,7 @@ export default function Dashboard() {
           </span>
         </div>
         <h3 style={{ margin: 0, fontSize: '0.9rem', display: 'flex', alignItems: 'center', color: 'white' }}>
-          {renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword)}
+          {!isExpired && renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword)}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.fileName}</span>
         </h3>
         <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: 'var(--color-text-medium)' }}>
@@ -769,6 +861,16 @@ export default function Dashboard() {
         <p style={{ margin: '2px 0 0 0', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
           Enviado {formatDate(item.sharedAt)}
         </p>
+        {item.expiresAt && (
+          <p style={{ 
+            margin: '4px 0 0 0', 
+            fontSize: '0.65rem', 
+            color: isExpired ? '#f5222d' : '#faad14',
+            fontWeight: isExpired ? 'bold' : 'normal'
+          }}>
+            {isExpired ? `Expiró: ${formatFullDate(item.expiresAt)}` : formatExpirationDate(item.expiresAt)}
+          </p>
+        )}
       </article>
     );
   };
@@ -785,24 +887,32 @@ export default function Dashboard() {
 
   return (
     <PrivateLayout>
-      <main style={{ paddingTop: '110px', paddingBottom: '60px', color: 'white', width: '100%', maxWidth: '1300px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
+      <main style={{ paddingTop: '110px', paddingBottom: '60px', maxWidth: '1300px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
         
-        {/* Encabezado */}
-        <section className="section-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
+        {/* HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <h1 style={{ fontWeight: '700', fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              ¡Hola, {nombreUsuario}! <span className="wave-emoji">👋</span>
+            <h1 style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              ¡Hola, {nombreUsuario}! 👋
             </h1>
             <p style={{ color: 'var(--color-text-medium)' }}>Gestiona tus archivos de forma segura</p>
           </div>
           
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {pestanaActiva === 'recibidos' && (
+              <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
+                <FaShareSquare /> Enviar Archivo
+              </button>
+            )}
+            {pestanaActiva === 'miunidad' && (
               <>
-                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary">
+                  <FaFolderPlus /> Crear Carpeta
+                </button>
+                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary">
                   <FaUpload /> Subir Archivo
                 </button>
-                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
                   <FaShareSquare /> Enviar Archivo
                 </button>
               </>
@@ -831,7 +941,7 @@ export default function Dashboard() {
               </button>
             )}
           </div>
-        </section>
+        </div>
 
         {/* Mensajes del sistema */}
         {error && <div style={{ padding: '16px', backgroundColor: 'rgba(245, 34, 45, 0.15)', color: '#f5222d', border: '1px solid rgba(245, 34, 45, 0.2)', borderRadius: '10px', marginBottom: '20px' }}>{error}</div>}
@@ -849,10 +959,10 @@ export default function Dashboard() {
         {/* TABS */}
         <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '35px', flexWrap: 'wrap' }}>
           <button onClick={() => { setPestanaActiva('recibidos'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'recibidos' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'recibidos' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
-            <FaRegBell /> Archivos Recibidos
+            <FaRegBell /> Recibidos
           </button>
           <button onClick={() => { setPestanaActiva('miunidad'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'miunidad' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'miunidad' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
-            <FaFolderOpen /> Mi unidad
+            <FaFolderOpen /> Mi Unidad
           </button>
           <button onClick={() => { setPestanaActiva('enviados'); setElementoDetalle(null); setCurrentFolderId(null); setFolderPath([]); }} style={{ padding: '12px 20px', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', color: pestanaActiva === 'enviados' ? 'var(--color-accent)' : 'var(--color-text-medium)', borderBottom: pestanaActiva === 'enviados' ? '3px solid var(--color-accent)' : '3px solid transparent' }}>
             <FaPaperPlane /> Enviados
@@ -980,293 +1090,61 @@ export default function Dashboard() {
             )}
           </section>
 
-          {/* PANEL DE DETALLE LATERAL */}
+          {/* PANEL DE DETALLE LATERAL - USANDO EL NUEVO COMPONENTE */}
           {elementoDetalle && (
-            <aside style={{ 
-              backgroundColor: '#1D263C', 
-              borderRadius: '16px', 
-              border: '1px solid #0a3fff', 
-              padding: '24px', 
-              position: 'sticky', 
-              top: '130px',
-              maxHeight: 'calc(100vh - 150px)',
-              overflowY: 'auto'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FaFileAlt style={{ color: '#46A2FD', fontSize: '1rem' }} />
-                  <h3 style={{ margin: 0, color: 'white', fontSize: '1rem', fontWeight: '600' }}>Información del archivo</h3>
-                </div>
-                <button onClick={() => setElementoDetalle(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                
-                {/* Icono y nombre */}
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '3rem', color: '#46A2FD', marginBottom: '12px' }}>
-                    {getFileIcon(elementoDetalle.fileType || elementoDetalle.fileType)}
-                  </div>
-                  <h4 style={{ margin: 0, color: 'white', fontSize: '1rem', fontWeight: '500', wordBreak: 'break-all' }}>
-                    {elementoDetalle.name || elementoDetalle.fileName}
-                  </h4>
-                </div>
-
-                {/* Estado de seguridad */}
-                <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <FaShieldAlt style={{ color: '#46A2FD', fontSize: '0.9rem' }} />
-                      <span style={{ color: '#888', fontSize: '0.8rem' }}>Seguridad</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {renderSecurityBadge(
-                        elementoDetalle.securityLevel, 
-                        isUnlockedDetail, 
-                        elementoDetalle.hasPassword === true
-                      )}
-                      <span style={{ color: 'white', fontSize: '0.85rem' }}>{elementoDetalle.securityLevel || 'PÚBLICO'}</span>
-                    </div>
-                  </div>
-                  
-                  {isUnlockedDetail && elementoDetalle.unlockedUntil && (
-                    <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'rgba(82,196,26,0.1)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#52c41a' }}>
-                        Acceso garantizado hasta {new Date(elementoDetalle.unlockedUntil).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {needsUnlock && (
-                    <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'rgba(250,173,20,0.1)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#faad14' }}>Archivo protegido - requiere autenticación</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Formulario de desbloqueo */}
-                {needsUnlock && (
-                  <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                      <FaLock style={{ color: '#faad14', fontSize: '0.8rem' }} />
-                      <span style={{ color: 'white', fontSize: '0.85rem', fontWeight: '500' }}>
-                        {elementoDetalle.securityLevel === 'PASSWORD' ? 'Desbloquear con contraseña' : 'Desbloquear con verificación'}
-                      </span>
-                    </div>
-                    
-                    {elementoDetalle.securityLevel === 'TOKEN_SMS' && (
-                      <>
-                        <button 
-                          onClick={() => handleSolicitarTokenPanel(elementoDetalle.itemId, elementoDetalle.isPersonal !== false)}
-                          disabled={solicitandoToken}
-                          style={{ 
-                            width: '100%', 
-                            padding: '10px', 
-                            marginBottom: '12px',
-                            backgroundColor: 'rgba(10,63,255,0.15)', 
-                            border: '1px solid rgba(10,63,255,0.3)',
-                            borderRadius: '8px', 
-                            color: '#46A2FD', 
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            opacity: solicitandoToken ? 0.6 : 1
-                          }}
-                        >
-                          {solicitandoToken ? 'Enviando...' : 'Solicitar código de verificación'}
-                        </button>
-                        
-                        <input 
-                          type="text"
-                          placeholder="Código de 6 dígitos"
-                          value={localTokenSms}
-                          onChange={(e) => setLocalTokenSms(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            marginBottom: '12px',
-                            backgroundColor: '#0D1425',
-                            color: 'white',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            fontSize: '0.85rem',
-                            textAlign: 'center'
-                          }}
-                        />
-                        
-                        <button 
-                          onClick={() => {
-                            handleVerificarTokenPanel(elementoDetalle.itemId, elementoDetalle.isPersonal !== false, localTokenSms);
-                            setLocalTokenSms('');
-                          }}
-                          disabled={desbloqueando || !localTokenSms.trim()}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            backgroundColor: '#0a3fff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            opacity: (!localTokenSms.trim() || desbloqueando) ? 0.6 : 1
-                          }}
-                        >
-                          {desbloqueando ? 'Verificando...' : 'Verificar y desbloquear'}
-                        </button>
-                      </>
-                    )}
-                    
-                    {elementoDetalle.securityLevel === 'PASSWORD' && (
-                      <>
-                        <input 
-                          type="password"
-                          placeholder="Contraseña del archivo"
-                          value={localPassword}
-                          onChange={(e) => setLocalPassword(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            marginBottom: '12px',
-                            backgroundColor: '#0D1425',
-                            color: 'white',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            fontSize: '0.85rem'
-                          }}
-                        />
-                        
-                        <button 
-                          onClick={() => {
-                            handleVerificarPasswordPanel(elementoDetalle.itemId, elementoDetalle.isPersonal !== false, localPassword);
-                            setLocalPassword('');
-                          }}
-                          disabled={desbloqueando || !localPassword.trim()}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            backgroundColor: '#0a3fff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            opacity: (!localPassword.trim() || desbloqueando) ? 0.6 : 1
-                          }}
-                        >
-                          {desbloqueando ? 'Verificando...' : 'Desbloquear archivo'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Información y acciones */}
-                {(!needsUnlock || isUnlockedDetail || elementoDetalle.securityLevel === 'PUBLIC') && (
-                  <>
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
-                      <div style={{ display: 'grid', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#888', fontSize: '0.8rem' }}>Remitente</span>
-                          <span style={{ color: 'white', fontSize: '0.85rem' }}>{elementoDetalle.sharedBy || elementoDetalle.remitente || 'Tú'}</span>
-                        </div>
-                        {elementoDetalle.sharedWith && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#888', fontSize: '0.8rem' }}>Destinatario</span>
-                            <span style={{ color: 'white', fontSize: '0.85rem' }}>{elementoDetalle.sharedWith}</span>
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#888', fontSize: '0.8rem' }}>Tamaño</span>
-                          <span style={{ color: 'white', fontSize: '0.85rem' }}>{formatFileSize(elementoDetalle.fileSize)}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#888', fontSize: '0.8rem' }}>Fecha</span>
-                          <span style={{ color: 'white', fontSize: '0.85rem' }}>
-                            {elementoDetalle.tipo === 'recibido' ? formatFullDate(elementoDetalle.sharedAt) : 
-                             elementoDetalle.tipo === 'enviado' ? formatFullDate(elementoDetalle.sharedAt) :
-                             formatFullDate(elementoDetalle.uploadedAt)}
-                          </span>
-                        </div>
-                        {elementoDetalle.expiresAt && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#888', fontSize: '0.8rem' }}>Expiración</span>
-                            <span style={{ color: '#ff4d4f', fontSize: '0.85rem', fontWeight: '500' }}>{formatFullDate(elementoDetalle.expiresAt)}</span>
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#888', fontSize: '0.8rem' }}>Permiso</span>
-                          <span style={{ 
-                            display: 'inline-block', 
-                            padding: '4px 10px', 
-                            borderRadius: '6px', 
-                            fontSize: '0.7rem', 
-                            fontWeight: '500',
-                            backgroundColor: elementoDetalle.accessLevel === 'DOWNLOAD' ? 'rgba(82,196,26,0.15)' : 'rgba(255,197,61,0.15)',
-                            color: elementoDetalle.accessLevel === 'DOWNLOAD' ? '#52c41a' : '#faad14'
-                          }}>
-                            {elementoDetalle.accessLevel === 'DOWNLOAD' ? 'Descarga permitida' : 'Solo lectura'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {elementoDetalle.subject && (
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <FaEnvelope style={{ color: '#46A2FD', fontSize: '0.8rem' }} />
-                          <span style={{ color: '#888', fontSize: '0.75rem' }}>ASUNTO</span>
-                        </div>
-                        <p style={{ margin: 0, color: 'white', fontSize: '0.85rem' }}>{elementoDetalle.subject}</p>
-                      </div>
-                    )}
-
-                    {elementoDetalle.message && (
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <FaEnvelope style={{ color: '#46A2FD', fontSize: '0.8rem' }} />
-                          <span style={{ color: '#888', fontSize: '0.75rem' }}>MENSAJE</span>
-                        </div>
-                        <p style={{ margin: 0, color: '#aaa', fontSize: '0.85rem', fontStyle: 'italic' }}>{elementoDetalle.message}</p>
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                      {elementoDetalle.accessLevel !== 'READ_ONLY' && (
-                        <button 
-                          onClick={() => handleDownload(elementoDetalle.itemId, elementoDetalle.isPersonal !== false, elementoDetalle.name || elementoDetalle.fileName)} 
-                          style={{ flex: 1, backgroundColor: 'rgba(10,63,255,0.15)', border: '1px solid rgba(10,63,255,0.3)', padding: '10px', borderRadius: '8px', color: '#46A2FD', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
-                        >
-                          <FaDownload /> Descargar
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => {
-                          const fileData = {
-                            name: elementoDetalle.name || elementoDetalle.fileName,
-                            fileName: elementoDetalle.fileName,
-                            fileType: elementoDetalle.fileType,
-                            fileSize: elementoDetalle.fileSize
-                          };
-                          handleOpenFile(elementoDetalle.itemId, elementoDetalle.isPersonal !== false, fileData);
-                        }}
-                        style={{ flex: 1, backgroundColor: 'rgba(82,196,26,0.1)', border: '1px solid rgba(82,196,26,0.2)', padding: '10px', borderRadius: '8px', color: '#52c41a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
-                      >
-                        <FaEye /> Visualizar
-                      </button>
-                    </div>
-
-                    {pestanaActiva !== 'papelera' && pestanaActiva !== 'enviados' && elementoDetalle.isPersonal !== false && (
-                      <button 
-                        onClick={() => handleMoveToTrash(elementoDetalle.itemId)} 
-                        style={{ width: '100%', backgroundColor: 'rgba(245,34,45,0.1)', border: '1px solid rgba(245,34,45,0.2)', padding: '10px', borderRadius: '8px', color: '#f5222d', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem', marginTop: '4px' }}
-                      >
-                        <FaTrash /> Mover a papelera
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </aside>
+            <FileDetailPanel
+              file={elementoDetalle}
+              onClose={() => setElementoDetalle(null)}
+              onRefresh={async (archivoActualizado) => {
+                // Actualizar el elemento detalle con el archivo refrescado
+                setElementoDetalle(prev => ({
+                ...prev,
+                inUnlocked: true,
+                isUnlocked: true,
+                unlockedUntil: archivoActualizado.unlockedUntil || prev.unlockedUntil,
+              }));
+              // Recargar toda la lista para mantener consistencia
+              loadData();
+              }}
+              onDownload={() => handleDownload(
+                elementoDetalle.itemId || elementoDetalle.shareId, 
+                elementoDetalle.isPersonal !== false, 
+                elementoDetalle.name || elementoDetalle.fileName
+              )}
+              onView={() => {
+                const fileData = {
+                  name: elementoDetalle.name || elementoDetalle.fileName,
+                  fileName: elementoDetalle.fileName,
+                  fileType: elementoDetalle.fileType,
+                  fileSize: elementoDetalle.fileSize
+                };
+                handleOpenFile(
+                  elementoDetalle.itemId || elementoDetalle.shareId, 
+                  elementoDetalle.isPersonal !== false, 
+                  fileData
+                );
+              }}
+              onMoveToTrash={() => handleMoveToTrash(elementoDetalle.itemId || elementoDetalle.shareId)}
+              onToggleFavorite={async () => {
+                const itemId = elementoDetalle.itemId || elementoDetalle.shareId;
+                const type = elementoDetalle.isPersonal ? 'PERSONAL' : 'SHARED';
+                const fav = favoritos.find(f => f.itemId === itemId && f.type === type);
+                await handleToggleFavorite(
+                  itemId,
+                  type,
+                  !!fav,
+                  fav?.favoriteId
+                );
+                await loadFavorites();
+              }}
+              isFavorite={!!favoritos.find(f => {
+                const itemId = elementoDetalle.itemId || elementoDetalle.shareId;
+                const type = elementoDetalle.isPersonal ? 'PERSONAL' : 'SHARED';
+                return f.itemId === itemId && f.type === type;
+              })}
+              showTrashButton={pestanaActiva !== 'papelera' && pestanaActiva !== 'enviados'}
+              isInTrash={pestanaActiva === 'papelera'}
+            />
           )}
         </div>
 

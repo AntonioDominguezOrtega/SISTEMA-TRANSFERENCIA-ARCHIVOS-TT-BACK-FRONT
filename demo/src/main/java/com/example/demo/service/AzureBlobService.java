@@ -4,9 +4,11 @@ import com.azure.core.http.rest.PagedIterable;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.models.BlobStorageException;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.azure.storage.common.sas.SasProtocol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -250,33 +252,47 @@ public class AzureBlobService {
     /**
      * Genera una URL para vista previa (inline) - Funciona para PDFs e imágenes
      */
-    public String generatePreviewUrl(String blobUrl, int expirationMinutes) {
+    /**
+     * Genera una URL para vista previa (inline) - Funciona para PDFs e imágenes
+     * @param blobUrl URL del blob en Azure
+     * @param expirationMinutes Minutos de validez del token
+     * @param fileTypeHint Tipo de archivo desde la BD (ej. "application/pdf")
+     */
+    public String generatePreviewUrl(String blobUrl, int expirationMinutes, String fileTypeHint) {
         try {
             String blobName = extractBlobNameFromUrl(blobUrl);
+            log.info("🔍 BlobName extraído: {}", blobName);
+
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
 
-            // Detectar el tipo de archivo por extensión
-            String blobNameLower = blobName.toLowerCase();
-            String contentType = "application/octet-stream";
-            String contentDisposition = "inline";
+            // Determinar el Content-Type usando el hint de la BD como prioridad
+            String contentType = fileTypeHint;
+            if (contentType == null || contentType.isEmpty()) {
+                // Fallback: intentar obtener del blob o detectar por extensión
+                try {
+                    BlobProperties properties = blobClient.getProperties();
+                    contentType = properties.getContentType();
+                    log.info("📄 Content-Type del blob: {}", contentType);
+                } catch (Exception e) {
+                    log.warn("No se pudo obtener Content-Type del blob: {}", e.getMessage());
+                }
 
-            if (blobNameLower.endsWith(".pdf")) {
-                contentType = "application/pdf";
-            } else if (blobNameLower.endsWith(".jpg") || blobNameLower.endsWith(".jpeg")) {
-                contentType = "image/jpeg";
-            } else if (blobNameLower.endsWith(".png")) {
-                contentType = "image/png";
-            } else if (blobNameLower.endsWith(".gif")) {
-                contentType = "image/gif";
-            } else if (blobNameLower.endsWith(".webp")) {
-                contentType = "image/webp";
-            } else if (blobNameLower.endsWith(".svg")) {
-                contentType = "image/svg+xml";
-            } else if (blobNameLower.endsWith(".mp4")) {
-                contentType = "video/mp4";
-                contentDisposition = "inline";
-            } else if (blobNameLower.endsWith(".webm")) {
-                contentType = "video/webm";
+                // Si sigue siendo octet-stream, intentar por extensión
+                if (contentType == null || "application/octet-stream".equals(contentType)) {
+                    String blobNameLower = blobName.toLowerCase();
+                    if (blobNameLower.endsWith(".pdf")) {
+                        contentType = "application/pdf";
+                        log.info("📄 Detectado PDF por extensión");
+                    } else if (blobNameLower.endsWith(".jpg") || blobNameLower.endsWith(".jpeg")) {
+                        contentType = "image/jpeg";
+                    } else if (blobNameLower.endsWith(".png")) {
+                        contentType = "image/png";
+                    } else {
+                        contentType = "application/pdf"; // Default
+                    }
+                }
+            } else {
+                log.info("📄 Usando fileTypeHint de BD: {}", contentType);
             }
 
             BlobSasPermission permission = new BlobSasPermission()
@@ -284,10 +300,10 @@ public class AzureBlobService {
 
             OffsetDateTime expiryTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
 
-            // Configurar headers para vista previa inline
             BlobServiceSasSignatureValues sasValues = new BlobServiceSasSignatureValues(expiryTime, permission)
-                    .setContentDisposition(contentDisposition)
-                    .setContentType(contentType);
+                    .setContentDisposition("inline")
+                    .setContentType(contentType)
+                    .setProtocol(SasProtocol.HTTPS_ONLY);  // Forzar HTTPS
 
             String sasToken = blobClient.generateSas(sasValues);
             String signedUrl = blobClient.getBlobUrl() + "?" + sasToken;

@@ -102,13 +102,10 @@ export default function EnviarArchivo() {
       setBuscandoGlobal(true);
       const delay = setTimeout(async () => {
         try {
-          // CAMBIO AQUÍ: Llamamos a searchGlobalUsers en lugar de searchUsersByAny
-          const response = await profileService.searchGlobalUsers(query);
-          
-          // CAMBIO AQUÍ: Extraemos los resultados de response.data
-          setResultadosFiltradosGlobal(response.data.results || response.data || []);
+          const response = await profileService.searchUsersByAny(query);
+          setResultadosFiltradosGlobal(response.results || []);
         } catch (err) {
-          console.error("Error en búsqueda global:", err);
+          console.error(err);
         } finally {
           setBuscandoGlobal(false);
         }

@@ -22,9 +22,10 @@ public class StorageItemResponse {
     private AccessLevel accessLevel;
 
     // Para saber si el archivo está "bloqueado" (requiere token/contraseña para abrir)
-    private Boolean isLocked;
+    private Boolean hasPassword;       // Si tiene contraseña configurada
 
-    // Para saber si el usuario actual tiene desbloqueo activo (24h)
-    private Boolean isUnlocked;
-    private LocalDateTime unlockedUntil;
+    // Estado de bloqueo
+    private Boolean isLocked;          // Si requiere desbloqueo
+    private Boolean isUnlocked;        // Si ya está desbloqueado
+    private LocalDateTime unlockedUntil; // Hasta cuándo está desbloqueado
 }

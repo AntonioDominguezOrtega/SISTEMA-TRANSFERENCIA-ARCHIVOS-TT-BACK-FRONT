@@ -191,15 +191,12 @@ export default function Login() {
             {/* CONTENEDOR DESLIZANTE */}
             <div className="contenedor__login-register" style={{ height: '620px' }}>
               
-              {/* =========================================
-                  FORMULARIO LOGIN (Con Luz Integrada)
-                 ========================================= */}
+              {/* FORMULARIO LOGIN */}
               <form 
                 className="formulario__login" 
                 onSubmit={handleLoginSubmit} 
                 style={{ 
                   top: '60px',
-                  /* 🌟 EFECTO DE ILUMINACIÓN INTEGRADO */
                   border: '1px solid #0a3fff',
                   boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)' 
                 }}
@@ -242,18 +239,17 @@ export default function Login() {
                   </p>
                 )}
 
-                <button type="submit" disabled={isLoading}>Entrar</button>
+                <button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Ingresando...' : 'Entrar'}
+                </button>
               </form>
 
-              {/* =========================================
-                  FORMULARIO REGISTRO (Con Luz Integrada)
-                 ========================================= */}
+              {/* FORMULARIO REGISTRO */}
               <form 
                 className="formulario__register" 
                 onSubmit={handleRegisterSubmit} 
                 style={{ 
                   padding: '30px 25px',
-                  /* 🌟 EFECTO DE ILUMINACIÓN INTEGRADO */
                   border: '1px solid #0a3fff',
                   boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)'
                 }}
@@ -292,7 +288,9 @@ export default function Login() {
                   </p>
                 )}
 
-                <button type="submit" disabled={isLoading}>Registrarse</button>
+                <button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Registrando...' : 'Registrarse'}
+                </button>
               </form>
 
             </div>
@@ -307,15 +305,42 @@ export default function Login() {
             <span style={{ fontSize: '3rem' }}>🛡️</span>
             <h2 style={{ margin: '1rem 0', color: 'var(--color-white)', fontWeight: '700' }}>Verificación Dual</h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-medium)', marginBottom: '1.5rem' }}>
-              Modo Local: Ingresa <strong>123456</strong> para simular la verificación.
+              Se ha enviado un código de verificación a <strong>{registeredEmail}</strong> y vía SMS a tu celular.
             </p>
 
             <form onSubmit={handleVerifyToken}>
               <div className="form-group" style={{ marginBottom: '20px' }}>
-                <input type="text" maxLength="6" className="form-control-modern" placeholder="000000" required style={{ textAlign: 'center', fontSize: '1.8rem', letterSpacing: '10px', height: '60px', backgroundColor: 'var(--color-dark)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} />
+                <input 
+                  type="text" 
+                  maxLength="6" 
+                  className="form-control-modern" 
+                  placeholder="000000" 
+                  required 
+                  style={{ textAlign: 'center', fontSize: '1.8rem', letterSpacing: '10px', height: '60px', backgroundColor: 'var(--color-dark)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} 
+                  value={tokenInput} 
+                  onChange={(e) => setTokenInput(e.target.value)} 
+                />
               </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Validar y Registrar Alta</button>
-              <button type="button" onClick={() => setShowTokenModal(false)} style={{ marginTop: '20px', background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem' }}>← Regresar</button>
+              
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isLoading}>
+                {isLoading ? 'Verificando...' : 'Validar y Registrar Alta'}
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={handleResendCode}
+                style={{ marginTop: '15px', background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Reenviar código
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={() => setShowTokenModal(false)} 
+                style={{ marginTop: '10px', background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem' }}
+              >
+                ← Regresar
+              </button>
             </form>
           </div>
         </div>

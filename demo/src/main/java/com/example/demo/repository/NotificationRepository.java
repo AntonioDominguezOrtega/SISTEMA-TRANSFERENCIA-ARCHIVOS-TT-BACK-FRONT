@@ -1,6 +1,7 @@
 package com.example.demo.repository;
 
 import com.example.demo.model.FileMetadata;
+import com.example.demo.model.FileShare;
 import com.example.demo.model.Notification;
 import com.example.demo.model.User;
 import org.springframework.data.domain.Page;
@@ -38,4 +39,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.createdAt < :cutoffDate")
     int deleteOldNotifications(@Param("cutoffDate") LocalDateTime now);
+
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.fileShare = :fileShare")
+    void deleteByFileShare(@Param("fileShare") FileShare fileShare);
 }

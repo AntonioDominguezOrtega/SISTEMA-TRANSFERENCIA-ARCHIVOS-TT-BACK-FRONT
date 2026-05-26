@@ -16,6 +16,7 @@ const profileService = {
     const response = await api.post('/profile/photo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+    
     return response.data;
   },
 
