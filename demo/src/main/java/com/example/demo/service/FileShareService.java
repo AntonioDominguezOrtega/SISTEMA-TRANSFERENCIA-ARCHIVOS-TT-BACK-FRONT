@@ -231,7 +231,7 @@ public class FileShareService {
         emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_REQUEST, true,
-            "Token enviado a " + maskPhoneNumber(phoneNumber));
+                "Token enviado a " + maskPhoneNumber(phoneNumber));
 
         return "Token enviado exitosamente";
     }
@@ -567,33 +567,6 @@ public class FileShareService {
         share.setAccessLevel(request.getAccessLevel());
         share.setSecurityLevel(request.getSecurityLevel());
         share.setNotifyOnview(request.getNotifyOnview());
-        share.setNotifyOnDownload(request.getNotifyOnDownload());
-        share.setSelfDestruct(request.getSelfDestruct());
-        share.setIsActive(true);
-        share.setIsUnlocked(false);
-
-        if (request.getSecurityLevel() == SecurityLevel.PASSWORD) {
-            share.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        }
-        if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            share.setUseCustomPhone(request.getUseAccountPhone()); // Pasamos el telefono que se utiliza en la cuenta
-            share.setCustomPhoneNumber(request.getCustomPhoneNumber()); // Pasamos numero so lo cambiamos
-        }
-
-        return share;
-    }
-
-    private FileShare createFileShare(FileMetadata file, User sharedBy, User sharedWith, ShareExistingFileRequest request) {
-        FileShare share = new FileShare();
-        share.setFile(file);
-        share.setSharedBy(sharedBy);
-        share.setSharedWith(sharedWith);
-        share.setSubject(request.getSubject());
-        share.setSharedAt(LocalDateTime.now());
-        share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
-        share.setAccessLevel(request.getAccessLevel());
-        share.setSecurityLevel(request.getSecurityLevel());
-        share.setNotifyOnview(request.getNotifyOnView());
         share.setNotifyOnDownload(request.getNotifyOnDownload());
         share.setSelfDestruct(request.getSelfDestruct());
         share.setIsActive(true);

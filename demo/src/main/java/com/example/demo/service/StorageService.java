@@ -982,8 +982,8 @@ public class StorageService {
             Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(item.getId(), currentUser);
             if (share.isPresent()) {
                 FileShare fs = share.get();
-                securityLevel = fs.getSecurityLevel();
-                accessLevel = fs.getAccessLevel(); // ← CORRECCIÓN: Mantener el tipo Enum
+                securityLevel = fs.getSecurityLevel().toString();
+                accessLevel = fs.getAccessLevel().toString();
                 hasPassword = fs.getPasswordHash() != null && !fs.getPasswordHash().isEmpty();
                 isUnlocked = fs.getIsUnlocked() != null && fs.getIsUnlocked() &&
                         fs.getUnlockedUntil() != null && fs.getUnlockedUntil().isAfter(LocalDateTime.now());
@@ -1003,12 +1003,12 @@ public class StorageService {
                 .fileType(item.getFileType())
                 .fileSize(item.getFileSize())
                 .uploadedAt(item.getUploadedAt())
-                .securityLevel(securityLevel)      
-                .accessLevel(accessLevel)          // ← Ahora coincide con el tipo que espera el Builder
-                .hasPassword(hasPassword)          
-                .isLocked(!isUnlocked && securityLevel != SecurityLevel.PUBLIC)  
-                .isUnlocked(isUnlocked)            
-                .unlockedUntil(unlockedUntil)      
+                .securityLevel(securityLevel)      // ← NUEVO: Nivel de seguridad
+                .accessLevel(accessLevel)          // ← NUEVO: Permiso (DOWNLOAD/READ_ONLY)
+                .hasPassword(hasPassword)          // ← NUEVO: Si tiene contraseña
+                .isLocked(!isUnlocked && !"PUBLIC".equals(securityLevel))  // ← NUEVO: Si está bloqueado
+                .isUnlocked(isUnlocked)            // ← NUEVO: Si está desbloqueado
+                .unlockedUntil(unlockedUntil)      // ← NUEVO: Hasta cuándo está desbloqueado
                 .build();
     }
 
@@ -1136,6 +1136,7 @@ public class StorageService {
             return mapToFavoriteResponse(saved);
 
         } else if ("SHARED".equals(type)) {
+            // Solo archivos compartidos, no carpetas compartidas por ahora
             FileShare share = fileShareRepository.findById(itemId)
                     .orElseThrow(() -> new RuntimeException("Archivo compartido no encontrado"));
 
@@ -1350,10 +1351,9 @@ public class StorageService {
             }
         }
     }
-
-    // ==============================================================
-    // 10. CADUCADOS
-    // ==============================================================
+// ==============================================================
+// 10. CADUCADOS
+// ==============================================================
 
     @Transactional(readOnly = true)
     public List<ExpiredShareResponse> getExpiredShares() {

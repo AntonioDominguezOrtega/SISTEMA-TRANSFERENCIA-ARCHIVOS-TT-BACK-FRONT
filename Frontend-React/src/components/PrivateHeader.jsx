@@ -8,7 +8,7 @@ import notificationService from '../services/notificationService';
 // React Icons
 import { 
   FaBars, FaSearch, FaRegBell, FaChevronDown, FaChevronUp, 
-  FaUser, FaCog, FaSignOutAlt, FaLock, FaShieldAlt
+  FaUser, FaCog, FaSignOutAlt, FaLock, FaShieldAlt 
 } from 'react-icons/fa';
 
 // Helper para obtener iniciales
@@ -24,6 +24,13 @@ const getResultIcon = (item) => {
   if (item.isFolder) return '📁';
   if (item.type === 'SHARED') return '📩';
   return '📄';
+};
+
+// Badge de seguridad para resultados de búsqueda
+const getSecurityBadge = (securityLevel) => {
+  if (securityLevel === 'PASSWORD') return <FaLock title="Protegido con contraseña" style={{ color: '#faad14', marginRight: '4px', fontSize: '0.75rem' }} />;
+  if (securityLevel === 'TOKEN_SMS') return <FaShieldAlt title="Verificación SMS" style={{ color: '#0a3fff', marginRight: '4px', fontSize: '0.75rem' }} />;
+  return null;
 };
 
 export default function PrivateHeader({ toggleSidebar }) {
@@ -128,7 +135,7 @@ export default function PrivateHeader({ toggleSidebar }) {
   }, [user]);
 
   // ============================================================
-  // BÚSQUEDA EN VIVO (FLUIDA - como la versión que funciona)
+  // BÚSQUEDA EN VIVO
   // ============================================================
   useEffect(() => {
     const query = searchTerm.trim();
@@ -140,7 +147,6 @@ export default function PrivateHeader({ toggleSidebar }) {
       const delayBusqueda = setTimeout(() => {
         searchService.suggestFiles(query)
           .then(response => {
-            // El backend devuelve { suggestions: [...] }
             setSearchResults(response.data.suggestions || []);
             setIsSearching(false);
           })
@@ -158,26 +164,7 @@ export default function PrivateHeader({ toggleSidebar }) {
   }, [searchTerm]);
 
   // ============================================================
-  // WEBSOCKET PARA NOTIFICACIONES EN TIEMPO REAL - COMENTADO TEMPORALMENTE
-  // ============================================================
-  // useEffect(() => {
-  //   if (user && user.id) {
-  //     const handleNewNotification = (notification) => {
-  //       console.log('🔔 Notificación en tiempo real:', notification);
-  //       setNotifications(prev => [notification, ...prev]);
-  //       setUnreadCount(prev => prev + 1);
-  //     };
-  //     
-  //     websocketService.connect(user.id, handleNewNotification);
-  //     
-  //     return () => {
-  //       websocketService.disconnect();
-  //     };
-  //   }
-  // }, [user]);
-
-  // ============================================================
-  // CERRAR MENÚS AL CLICAR FUERA
+  // CERRAR MENÚS AL CLICAR FUERA (CON AUTO-MARCADO DE NOTIFICACIONES)
   // ============================================================
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -185,6 +172,9 @@ export default function PrivateHeader({ toggleSidebar }) {
         setShowResults(false);
       }
       if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        if (showNotifications && unreadCount > 0) {
+          handleMarkAllAsRead();
+        }
         setShowNotifications(false);
       }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -193,7 +183,7 @@ export default function PrivateHeader({ toggleSidebar }) {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showNotifications, unreadCount]);
 
   // ============================================================
   // MANEJADORES
@@ -209,10 +199,42 @@ export default function PrivateHeader({ toggleSidebar }) {
   const handleResultClick = (item) => {
     setShowResults(false);
     setSearchTerm('');
+    
     if (item.type === 'FOLDER') {
-      navigate(`/carpeta/${item.id}`);
+      navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
+    } else if (item.type === 'PERSONAL') {
+      navigate('/dashboard', { 
+        state: { 
+          selectedFile: {
+            id: item.id,
+            name: item.name,
+            type: 'personal',
+            fileType: item.fileType,
+            fileSize: item.fileSize,
+            securityLevel: item.securityLevel,
+            isUnlocked: item.isUnlocked,
+            isExpired: false
+          }
+        }
+      });
+    } else if (item.type === 'SHARED') {
+      navigate('/dashboard', { 
+        state: { 
+          selectedFile: {
+            shareId: item.id,
+            name: item.name,
+            type: 'shared',
+            fileType: item.fileType,
+            fileSize: item.fileSize,
+            securityLevel: item.securityLevel,
+            isUnlocked: item.isUnlocked,
+            isExpired: item.isExpired,
+            sharedBy: item.sharedBy
+          }
+        }
+      });
     } else {
-      navigate(`/archivo/${item.id}`);
+      navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
     }
   };
 
@@ -281,9 +303,10 @@ export default function PrivateHeader({ toggleSidebar }) {
     return (
       <header className={`private-header ${scrolled ? 'header-scrolled' : ''}`} style={{
         position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000,
-        padding: scrolled ? '0.5rem 28px' : '0.85rem 28px',
+        transition: 'all 0.4s ease',
+        padding: scrolled ? '0.5rem 2rem' : '0.85rem 2rem',
         backgroundColor: scrolled ? 'rgba(24, 35, 60, 0.95)' : '#18233C',
-        boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.3)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
+        boxShadow: scrolled ? '0 4px 20px rgba(10, 63, 255, 0.5)' : '0 4px 14px rgba(0, 0, 0, 0.15)',
         backdropFilter: scrolled ? 'blur(10px)' : 'none',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         display: 'flex',
@@ -292,7 +315,7 @@ export default function PrivateHeader({ toggleSidebar }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <button onClick={toggleSidebar} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>☰</button>
-          <Link to="/dashboard"><img src="/assets2/img/logo.png" alt="Logo" style={{ height: scrolled ? '40px' : '70px' }} /></Link>
+          <Link to="/dashboard"><img src="/assets2/img/logo.png" alt="Logo" style={{ height: scrolled ? '30px' : '60px', width: 'auto', objectFit: 'contain', transition: 'height 0.3s ease' }} /></Link>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#0a3fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>?</div>
@@ -309,10 +332,9 @@ export default function PrivateHeader({ toggleSidebar }) {
     <header className={`private-header ${scrolled ? 'header-scrolled' : ''}`} style={{
       position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000,
       transition: 'all 0.4s ease',
-      padding: scrolled ? '0.5rem 28px' : '0.85rem 28px',
-      minHeight: scrolled ? '65px' : '82px',
+      padding: scrolled ? '0.5rem 2rem' : '0.85rem 2rem',
       backgroundColor: scrolled ? 'rgba(24, 35, 60, 0.95)' : '#18233C',
-      boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.3)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
+      boxShadow: scrolled ? '0 4px 20px rgba(10, 63, 255, 0.5)' : '0 4px 14px rgba(0, 0, 0, 0.15)',
       backdropFilter: scrolled ? 'blur(10px)' : 'none',
       borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
       display: 'flex',
@@ -332,7 +354,7 @@ export default function PrivateHeader({ toggleSidebar }) {
             alt="Logo Capara" 
             className='logo-img'
             style={{
-              height: scrolled ? '40px' : '70px', 
+              height: scrolled ? '30px' : '60px', 
               width: 'auto',          
               objectFit: 'contain',   
               transition: 'height 0.3s ease' 
@@ -341,12 +363,12 @@ export default function PrivateHeader({ toggleSidebar }) {
         </Link>
       </div>
 
-      {/* CENTER: Buscador (fluido - como la versión que funciona) */}
+      {/* CENTER: Buscador */}
       <div className="private-header-center" ref={searchRef} style={{ position: 'relative', width: '100%', maxWidth: '720px' }}>
         <form className="header-search" onSubmit={handleSearchSubmit} style={{ margin: 0, display: 'flex' }}>
           <input 
             type="text" 
-            placeholder="Buscar en todos tus archivos y compartidos..." 
+            placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => { if(searchTerm.trim().length >= 2) setShowResults(true) }}
@@ -412,7 +434,8 @@ export default function PrivateHeader({ toggleSidebar }) {
                   >
                     <span style={{ fontSize: '1.2rem' }}>{getResultIcon(item)}</span>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+                        {getSecurityBadge(item.securityLevel)}
                         {item.name}
                       </p>
                       <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>
@@ -436,7 +459,9 @@ export default function PrivateHeader({ toggleSidebar }) {
             className="icon-btn" 
             onClick={() => {
               setShowNotifications(!showNotifications);
-              if (!showNotifications) loadNotifications();
+              if (!showNotifications) {
+                loadNotifications();
+              }
             }}
             style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', position: 'relative' }}
           >
@@ -505,7 +530,15 @@ export default function PrivateHeader({ toggleSidebar }) {
                     return (
                       <div 
                         key={notif.id}
-                        onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
+                        onClick={() => {
+                          if (!notif.isRead) {
+                            handleMarkAsRead(notif.id);
+                          }
+                          if (notif.fileShareId) {
+                            setShowNotifications(false);
+                            navigate(`/dashboard?tab=recibidos`);
+                          }
+                        }}
                         style={{
                           padding: '12px 16px',
                           borderBottom: '1px solid rgba(255,255,255,0.05)',

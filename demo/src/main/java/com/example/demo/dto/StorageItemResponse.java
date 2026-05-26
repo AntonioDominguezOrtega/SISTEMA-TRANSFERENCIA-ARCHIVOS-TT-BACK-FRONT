@@ -18,10 +18,8 @@ public class StorageItemResponse {
     private LocalDateTime uploadedAt;
 
     // Niveles de seguridad (para archivos)
-    private SecurityLevel securityLevel;
-    private AccessLevel accessLevel;
-
-    // Para saber si el archivo está "bloqueado" (requiere token/contraseña para abrir)
+    private String securityLevel;      // "PUBLIC", "PASSWORD", "TOKEN_SMS"
+    private String accessLevel;        // "READ_ONLY", "DOWNLOAD"
     private Boolean hasPassword;       // Si tiene contraseña configurada
 
     // Estado de bloqueo
