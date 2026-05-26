@@ -906,19 +906,6 @@ export default function Dashboard() {
             )}
             {pestanaActiva === 'miunidad' && (
               <>
-                <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary">
-                  <FaFolderPlus /> Crear Carpeta
-                </button>
-                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary">
-                  <FaUpload /> Subir Archivo
-                </button>
-                <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary">
-                  <FaShareSquare /> Enviar Archivo
-                </button>
-              </>
-            )}
-            {pestanaActiva === 'miunidad' && (
-              <>
                 <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-accent)' }}>
                   <FaFolderPlus /> Crear carpeta
                 </button>

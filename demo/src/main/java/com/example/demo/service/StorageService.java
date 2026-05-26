@@ -257,7 +257,7 @@ public class StorageService {
             String blobUrl = azureBlobService.uploadEncryptedFileWithName(file, "", iv, blobName);
             log.info("🔵 BlobUrl recibido: {}", blobUrl);
 
-// 4. Guardar metadata
+            // 4. Guardar metadata
             FileMetadata metadata = new FileMetadata();
             metadata.setFileName(file.getOriginalFilename());
             metadata.setFileType(file.getContentType());
@@ -609,25 +609,6 @@ public class StorageService {
     }
 
     @Transactional(readOnly = true)
-    public String getPreviewUrl(String fileId) {
-        User currentUser = getCurrentUser();
-        FileShare share = getPersonalFileShare(fileId, currentUser);
-
-        // Validar que esté desbloqueado si requiere seguridad extra
-        if (share.getSecurityLevel() != SecurityLevel.PUBLIC) {
-            boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
-                    share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
-
-            if (!isUnlocked) {
-                throw new RuntimeException("Archivo bloqueado. Debes desbloquearlo primero");
-            }
-        }
-
-        // Generar SAS token de Azure válido por 1 hora para el visor de PDFs/Imágenes
-        return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
-    }
-
-    @Transactional(readOnly = true)
     public StorageItemResponse getItemInfo(String itemId) {
         User currentUser = getCurrentUser();
         FileMetadata item = fileMetadataRepository.findById(itemId)
@@ -641,8 +622,8 @@ public class StorageService {
     }
 
     // ==============================================================
-// 5. COMPARTIR ARCHIVOS DESDE ALMACENAMIENTO PERSONAL (FASE 2)
-// ==============================================================
+    // 5. COMPARTIR ARCHIVOS DESDE ALMACENAMIENTO PERSONAL (FASE 2)
+    // ==============================================================
 
     /**
      * Compartir un archivo existente con otros usuarios
@@ -733,9 +714,9 @@ public class StorageService {
                 .collect(Collectors.toList());
     }
 
-// ==============================================================
-// MÉTODOS PRIVADOS PARA FASE 2
-// ==============================================================
+    // ==============================================================
+    // MÉTODOS PRIVADOS PARA FASE 2
+    // ==============================================================
 
     /**
      * Crear FileShare a partir de un archivo existente
@@ -989,9 +970,9 @@ public class StorageService {
     private StorageItemResponse mapToStorageResponse(FileMetadata item, User currentUser) {
         log.info("📦 Mapeando item: {} (isFolder: {})", item.getFileName(), item.getIsFolder());
 
-        // Valores por defecto
-        String securityLevel = "PUBLIC";
-        String accessLevel = "DOWNLOAD";
+        // Valores por defecto usando los Enums correspondientes
+        SecurityLevel securityLevel = SecurityLevel.PUBLIC;
+        AccessLevel accessLevel = AccessLevel.DOWNLOAD; // ← CORRECCIÓN: Usar Enum en lugar de String
         Boolean isUnlocked = true;
         LocalDateTime unlockedUntil = null;
         Boolean hasPassword = false;
@@ -1001,8 +982,8 @@ public class StorageService {
             Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(item.getId(), currentUser);
             if (share.isPresent()) {
                 FileShare fs = share.get();
-                securityLevel = fs.getSecurityLevel().toString();
-                accessLevel = fs.getAccessLevel().toString();
+                securityLevel = fs.getSecurityLevel();
+                accessLevel = fs.getAccessLevel(); // ← CORRECCIÓN: Mantener el tipo Enum
                 hasPassword = fs.getPasswordHash() != null && !fs.getPasswordHash().isEmpty();
                 isUnlocked = fs.getIsUnlocked() != null && fs.getIsUnlocked() &&
                         fs.getUnlockedUntil() != null && fs.getUnlockedUntil().isAfter(LocalDateTime.now());
@@ -1014,7 +995,7 @@ public class StorageService {
             }
         }
 
-        StorageItemResponse response = StorageItemResponse.builder()
+        return StorageItemResponse.builder()
                 .id(item.getId())
                 .name(item.getFileName())
                 .isFolder(item.getIsFolder())
@@ -1022,12 +1003,12 @@ public class StorageService {
                 .fileType(item.getFileType())
                 .fileSize(item.getFileSize())
                 .uploadedAt(item.getUploadedAt())
-                .securityLevel(securityLevel)      // ← NUEVO: Nivel de seguridad
-                .accessLevel(accessLevel)          // ← NUEVO: Permiso (DOWNLOAD/READ_ONLY)
-                .hasPassword(hasPassword)          // ← NUEVO: Si tiene contraseña
-                .isLocked(!isUnlocked && !"PUBLIC".equals(securityLevel))  // ← NUEVO: Si está bloqueado
-                .isUnlocked(isUnlocked)            // ← NUEVO: Si está desbloqueado
-                .unlockedUntil(unlockedUntil)      // ← NUEVO: Hasta cuándo está desbloqueado
+                .securityLevel(securityLevel)      
+                .accessLevel(accessLevel)          // ← Ahora coincide con el tipo que espera el Builder
+                .hasPassword(hasPassword)          
+                .isLocked(!isUnlocked && securityLevel != SecurityLevel.PUBLIC)  
+                .isUnlocked(isUnlocked)            
+                .unlockedUntil(unlockedUntil)      
                 .build();
     }
 
@@ -1064,8 +1045,8 @@ public class StorageService {
     }
 
     // ==============================================================
-// MÉTODOS DE AUDITORÍA Y UTILIDADES (FALTANTES)
-// ==============================================================
+    // MÉTODOS DE AUDITORÍA Y UTILIDADES (FALTANTES)
+    // ==============================================================
 
     /**
      * Registrar acción en el log de auditoría
@@ -1124,8 +1105,8 @@ public class StorageService {
     }
 
     // ==============================================================
-// 6. FAVORITOS
-// ==============================================================
+    // 6. FAVORITOS
+    // ==============================================================
 
     @Transactional
     public FavoriteResponse addFavorite(String itemId, String type) {
@@ -1203,9 +1184,9 @@ public class StorageService {
                 .collect(Collectors.toList());
     }
 
-// ==============================================================
-// 7. RECIENTES
-// ==============================================================
+    // ==============================================================
+    // 7. RECIENTES
+    // ==============================================================
 
     @Transactional(readOnly = true)
     public List<StorageItemResponse> getRecentPersonalFiles(int days) {
@@ -1237,9 +1218,9 @@ public class StorageService {
                 .collect(Collectors.toList());
     }
 
-// ==============================================================
-// 9. PAPELERA
-// ==============================================================
+    // ==============================================================
+    // 9. PAPELERA
+    // ==============================================================
 
     @Transactional(readOnly = true)
     public List<TrashItemResponse> getTrashItems() {
@@ -1303,6 +1284,9 @@ public class StorageService {
                 currentUser.getUsername(), count);
 
         // Forzar flush para que la transacción se complete
+        return count;
+    }
+
     /**
      * Eliminar referencias de un FileShare en otras tablas
      */
@@ -1366,11 +1350,13 @@ public class StorageService {
             }
         }
     }
-// ==============================================================
-// 10. CADUCADOS
-// ==============================================================
+
+    // ==============================================================
+    // 10. CADUCADOS
+    // ==============================================================
 
     @Transactional(readOnly = true)
+    public List<ExpiredShareResponse> getExpiredShares() {
         User currentUser = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
 
@@ -1382,9 +1368,9 @@ public class StorageService {
                 .collect(Collectors.toList());
     }
 
-// ==============================================================
-// MÉTODOS AUXILIARES DE MAPEO
-// ==============================================================
+    // ==============================================================
+    // MÉTODOS AUXILIARES DE MAPEO
+    // ==============================================================
 
     private FavoriteResponse mapToFavoriteResponse(Favorite favorite) {
         if (favorite.getFileMetadata() != null) {
@@ -1468,8 +1454,6 @@ public class StorageService {
                 .securityLevel(share.getSecurityLevel().toString())
                 .build();
     }
-
-// En StorageService.java, agrega este método:
 
     /**
      * Genera URL para vista previa de archivo personal (solo lectura)

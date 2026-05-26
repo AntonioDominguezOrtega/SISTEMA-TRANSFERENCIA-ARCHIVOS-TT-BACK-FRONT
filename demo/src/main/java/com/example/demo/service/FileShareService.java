@@ -224,16 +224,14 @@ public class FileShareService {
         // Decidir a qué número enviarlo
         String phoneNumber = share.getUseCustomPhone() ? share.getCustomPhoneNumber() : currentUser.getPhone();
 
-        // Enviar por SMS
-        String message = String.format("Tu codigo de desbloqueo es: %s. Valido por %d minutos. Archivo: %s",
-                token, SMS_TOKEN_EXPIRATION_MINUTES, share.getFile().getFileName());
+        // Enviar por SMS (Variable eliminada para evitar error de variable no usada)
         twilioService.sendVerificationCode(phoneNumber, token);
 
         // Enviar por Email (Backup)
         emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_REQUEST, true,
-            "Token enviado a" + maskPhoneNumber(phoneNumber));
+            "Token enviado a " + maskPhoneNumber(phoneNumber));
 
         return "Token enviado exitosamente";
     }
@@ -377,7 +375,7 @@ public class FileShareService {
             throw new RuntimeException("No tienes acceso a este archivo");
         }
 
-        validateFileAccess(share, currentUser);  // ← Modificar este método también
+        validateFileAccess(share, currentUser);
 
         // Incrementar estadísticas solo si es el receptor (sharedWith)
         if (share.getSharedWith().getId().equals(currentUser.getId())) {
@@ -494,6 +492,7 @@ public class FileShareService {
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con username " + recipient.getIdentifier()));
             case PHONE -> userRepository.findByPhone(recipient.getIdentifier())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con telefono " + recipient.getIdentifier()));
+            default -> throw new IllegalArgumentException("Tipo de destinatario no soportado: " + recipient.getType());
         };
     }
 
@@ -505,6 +504,7 @@ public class FileShareService {
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con username " + recipient.getIdentifier()));
             case PHONE -> userRepository.findByPhone(recipient.getIdentifier())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con telefono " + recipient.getIdentifier()));
+            default -> throw new IllegalArgumentException("Tipo de destinatario no soportado: " + recipient.getType());
         };
     }
 
@@ -619,25 +619,19 @@ public class FileShareService {
             case DAYS_7 -> LocalDateTime.now().plusDays(7);
             case MONTH_1 -> LocalDateTime.now().plusMonths(1);
             case CUSTOM -> LocalDateTime.now().plusDays(30);
+            default -> LocalDateTime.now().plusDays(30);
         };
     }
 
     private LocalDateTime calculateExpiration (ShareExistingFileRequest.ExpirationTime expirationTime) {
         return switch (expirationTime) {
+            case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
             case DAYS_7 -> LocalDateTime.now().plusDays(7);
             case MONTH_1 -> LocalDateTime.now().plusMonths(1);
             case CUSTOM -> LocalDateTime.now().plusDays(30);
+            default -> LocalDateTime.now().plusDays(30);
         };
-    }
-
-    private void validateFileAcces(FileShare share) {
-
-        if (share.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            if (!share.getIsUnlocked() || share.getUnlockedUntil().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Este archivo esta bloqueado. Solicite un token SMS");
-            }
-        }
     }
 
     // --- LÓGICA DE AUDITORÍA (EXTRACCIÓN DE IP Y NAVEGADOR) ---
@@ -679,11 +673,11 @@ public class FileShareService {
     // --- LÓGICA DE NOTIFICACIONES ---
 
     private void sendSharingNotifications(FileShare share, FileUploadRequest request) {
-        String content = String.format("%s %s te ha compartido el archivo: %s\\nNivel de seguridad: %s\\nExpira: %s\\n\\nInicia sesión en la plataforma para verlo.",
+        String content = String.format("%s %s te ha compartido el archivo: %s\nNivel de seguridad: %s\nExpira: %s\n\nInicia sesión en la plataforma para verlo.",
                 share.getSharedBy().getNombre(), share.getSharedBy().getApellido(), share.getFile().getFileName(), share.getSecurityLevel(), share.getExpiresAt());
 
         if (request.getMessage() != null && !request.getMessage().isEmpty()) {
-            content += "\\n\\nMensaje: " + request.getMessage();
+            content += "\n\nMensaje: " + request.getMessage();
         }
 
         emailService.sendSimpleMessage(share.getSharedWith().getEmail(), "Te compartio un archivo", content);
@@ -762,7 +756,7 @@ public class FileShareService {
 
     private void sendDestructionNotification(FileShare share) {
         emailService.sendSimpleMessage(share.getSharedBy().getEmail(), "Archivo auto-destruido",
-                "Tu archivo '" + share.getFile().getFileName() + "' ha sido auto-destruido por expiracionn");
+                "Tu archivo '" + share.getFile().getFileName() + "' ha sido auto-destruido por expiracion");
         emailService.sendSimpleMessage(share.getSharedWith().getEmail(), "Archivo expirado",
                 "El archivo '" + share.getFile().getFileName() + "' ha expirado y ya no está disponible");
     }

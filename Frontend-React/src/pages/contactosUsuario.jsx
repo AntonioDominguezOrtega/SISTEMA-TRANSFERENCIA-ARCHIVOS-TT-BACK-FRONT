@@ -201,17 +201,17 @@ export default function ContactosUsuario() {
                       </button>
                     </div>
                   </article>
-                );
-              })}
-            </div>
-
-            {contactosFiltrados.length === 0 && !cargando && (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
-                No se encontraron contactos en tu red personal.
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {contactosFiltrados.length === 0 && !cargando && (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-medium)' }}>
+                  No se encontraron contactos en tu red personal.
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </main>
 
       {/* =======================================================
