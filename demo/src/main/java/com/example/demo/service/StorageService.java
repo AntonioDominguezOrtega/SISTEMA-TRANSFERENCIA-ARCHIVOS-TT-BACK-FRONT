@@ -906,8 +906,26 @@ public class StorageService {
             throw new RuntimeException("No tienes acceso a este archivo");
         }
 
+        // Si no encuentra la configuración (archivos viejos), la crea automáticamente como PÚBLICA
         return fileShareRepository.findByFile_IdAndSharedWith(fileId, user)
-                .orElseThrow(() -> new RuntimeException("Archivo personal no configurado correctamente"));
+                .orElseGet(() -> {
+                    FileShare newShare = new FileShare();
+                    newShare.setFile(file);
+                    newShare.setSharedBy(user);
+                    newShare.setSharedWith(user);
+                    newShare.setSharedAt(file.getUploadedAt() != null ? file.getUploadedAt() : LocalDateTime.now());
+                    newShare.setExpiresAt(null); // No expira
+                    newShare.setAccessLevel(AccessLevel.DOWNLOAD);
+                    newShare.setSecurityLevel(SecurityLevel.PUBLIC);
+                    newShare.setNotifyOnview(false);
+                    newShare.setNotifyOnDownload(false);
+                    newShare.setSelfDestruct(false);
+                    newShare.setIsActive(true);
+                    newShare.setIsUnlocked(true);
+                    newShare.setViewCount(0);
+                    newShare.setDownloadCount(0);
+                    return fileShareRepository.save(newShare);
+                });
     }
 
     private void validateSecurityLevel(PersonalFileUploadRequest request) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
 import FileSelectorModal from '../components/FileSelectorModal';
@@ -25,6 +25,7 @@ const getInitials = (nombre, apellido) => {
 
 export default function EnviarArchivo() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // ========== ESTADOS DE ARCHIVOS ==========
   const [origenArchivo, setOrigenArchivo] = useState('NUEVO'); // 'NUEVO' o 'EXISTENTE'
@@ -62,7 +63,6 @@ export default function EnviarArchivo() {
   // ========== NOTIFICACIONES ==========
   const [notifyOnView, setNotifyOnView] = useState(false);
   const [notifyOnDownload, setNotifyOnDownload] = useState(false);
-  const [selfDestruct, setSelfDestruct] = useState(false);
   
   // ========== ESTADOS DE UI ==========
   const [isUploading, setIsUploading] = useState(false);
@@ -77,21 +77,60 @@ export default function EnviarArchivo() {
   ];
 
   // ============================================================
-  // 1. CARGAR MIS CONTACTOS
+  // 1. CARGAR MIS CONTACTOS Y AUTO-SELECCIONAR DESDE LA URL
   // ============================================================
   useEffect(() => {
     const loadContacts = async () => {
       try {
         const response = await profileService.getMyContacts();
-        // Como usamos axios directo, la información está dentro de response.data
-        // Hacemos un fallback por si el backend devuelve un arreglo directo o un objeto con "contacts"
-        setMisContactos(response.data.contacts || response.data || []);
+        const contactsList = response.data.contacts || response.data || [];
+        setMisContactos(contactsList);
+
+        // --- LÓGICA PARA LEER LA URL Y PRE-SELECCIONAR CONTACTO ---
+        const searchParams = new URLSearchParams(location.search);
+        const toId = searchParams.get('to');
+
+        if (toId && contactsList.length > 0) {
+          // Buscamos el contacto que coincida con el ID (userId, contactId o id)
+          const contactToAdd = contactsList.find(c => 
+            String(c.userId) === String(toId) || 
+            String(c.id) === String(toId) || 
+            String(c.contactId) === String(toId)
+          );
+          
+          if (contactToAdd) {
+            const identifier = contactToAdd.username || contactToAdd.email;
+            const type = contactToAdd.username ? 'USERNAME' : 'EMAIL';
+            const label = `${contactToAdd.nombre} ${contactToAdd.apellido || ''}`.trim();
+
+            // Usamos una función para actualizar el estado y evitar duplicados
+            // en caso de que el componente se renderice dos veces.
+            setDestinatarios(prevDestinatarios => {
+              if (prevDestinatarios.some(d => d.identifier === identifier)) {
+                return prevDestinatarios; // Si ya está, no lo duplica
+              }
+              return [...prevDestinatarios, {
+                id: contactToAdd.userId || contactToAdd.id,
+                identifier,
+                type,
+                label,
+                nombre: contactToAdd.nombre,
+                apellido: contactToAdd.apellido,
+                username: contactToAdd.username,
+                email: contactToAdd.email,
+                profilePictureUrl: contactToAdd.profilePictureUrl
+              }];
+            });
+          }
+        }
+        // ----------------------------------------------------------
+
       } catch (err) {
         console.error("Error al cargar mis contactos", err);
       }
     };
     loadContacts();
-  }, []);
+  }, [location.search]); // <--- Asegúrate de que location.search esté en el arreglo de dependencias
 
   // ============================================================
   // 2. BÚSQUEDA GLOBAL DE USUARIOS
@@ -269,7 +308,6 @@ export default function EnviarArchivo() {
           expirationTime: expirationTime,
           notifyOnview: notifyOnView,
           notifyOnDownload: notifyOnDownload,
-          selfDestruct: selfDestruct,
           message: mensaje || null,
           subject: asunto || null
         };
@@ -306,7 +344,6 @@ export default function EnviarArchivo() {
             expirationTime: expirationTime,
             notifyOnView: notifyOnView,
             notifyOnDownload: notifyOnDownload,
-            selfDestruct: selfDestruct,
             message: mensaje || null,
             subject: asunto || null,
             sendCopyToMyself: false
@@ -632,9 +669,6 @@ export default function EnviarArchivo() {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
                 <input type="checkbox" checked={notifyOnDownload} onChange={(e) => setNotifyOnDownload(e.target.checked)} /> Notificar cuando descarguen
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
-                <input type="checkbox" checked={selfDestruct} onChange={(e) => setSelfDestruct(e.target.checked)} /> Auto-destruir después de la primera vista
               </label>
             </div>
           </div>

@@ -140,14 +140,10 @@ export default function RegistroUsuario() {
                 </div>
 
                 {/* Correos */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gap: '1.5rem' }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="email">Correo Principal</label>
+                    <label className="form-label" htmlFor="email">Correo</label>
                     <input type="email" id="email" className="form-control-modern" placeholder="usuario@ipn.mx" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="emailRecuperacion">Correo Extra</label>
-                    <input type="email" id="emailRecuperacion" className="form-control-modern" placeholder="personal@gmail.com" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
                   </div>
                 </div>
 

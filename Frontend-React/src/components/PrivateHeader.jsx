@@ -202,40 +202,29 @@ export default function PrivateHeader({ toggleSidebar }) {
     
     if (item.type === 'FOLDER') {
       navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
-    } else if (item.type === 'PERSONAL') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            id: item.id,
-            name: item.name,
-            type: 'personal',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: false
-          }
-        }
-      });
-    } else if (item.type === 'SHARED') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            shareId: item.id,
-            name: item.name,
-            type: 'shared',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: item.isExpired,
-            sharedBy: item.sharedBy
-          }
-        }
-      });
-    } else {
-      navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
+      return;
     }
+
+    // Enviamos el objeto con toda la metadata recolectada directamente al estado de navegación
+    navigate('/dashboard', { 
+      state: { 
+        selectedFile: {
+          id: item.type === 'PERSONAL' ? item.id : undefined,
+          shareId: item.type === 'SHARED' ? item.id : undefined,
+          itemId: item.id,
+          name: item.name,
+          fileName: item.name,
+          fileType: item.fileType,
+          fileSize: item.fileSize,
+          securityLevel: item.securityLevel,
+          isUnlocked: item.isUnlocked,
+          isExpired: item.isExpired,
+          accessLevel: item.accessLevel,
+          sharedBy: item.sharedBy,
+          isPersonal: item.type === 'PERSONAL'
+        }
+      }
+    });
   };
 
   const handleMarkAsRead = async (notificationId) => {
@@ -534,9 +523,32 @@ export default function PrivateHeader({ toggleSidebar }) {
                           if (!notif.isRead) {
                             handleMarkAsRead(notif.id);
                           }
-                          if (notif.fileShareId) {
+                          
+                          // Como el backend devuelve la entidad anidada, la extraemos
+                          const shareData = notif.fileShare; 
+                          const targetShareId = shareData ? shareData.id : notif.fileShareId;
+
+                          if (targetShareId) {
                             setShowNotifications(false);
-                            navigate(`/dashboard?tab=recibidos`);
+                            
+                            // Verificamos si la notificación es de algo que enviaste o recibiste
+                            // Dependiendo del tipo de notificación, lo mandamos a recibidos o enviados
+                            const isSentByMe = notif.type === 'FILE_DOWNLOADED' || notif.type === 'FILE_VIEWED';
+                            const panelType = isSentByMe ? 'sent' : 'shared';
+                            
+                            navigate('/dashboard', {
+                              state: {
+                                selectedFile: {
+                                  type: panelType, // 'shared' (recibidos) o 'sent' (enviados)
+                                  shareId: targetShareId,
+                                  fileName: shareData?.file?.fileName || shareData?.fileName || 'Archivo',
+                                  fileType: shareData?.file?.fileType || shareData?.fileType || '',
+                                  fileSize: shareData?.file?.fileSize || shareData?.fileSize || 0,
+                                  securityLevel: shareData?.securityLevel || 'PUBLIC',
+                                  isPersonal: false
+                                }
+                              }
+                            });
                           }
                         }}
                         style={{

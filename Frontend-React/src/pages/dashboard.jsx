@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
 import FileViewerModal from '../components/FileViewerModal';
@@ -93,6 +93,7 @@ const formatFullDate = (dateStr) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // ========== ESTADOS PRINCIPALES ==========
   const [loading, setLoading] = useState(true);
@@ -131,6 +132,22 @@ export default function Dashboard() {
       return () => clearTimeout(timer);
     }
   }, [panelMessage]);
+
+  // ========== CAPTURAR BÚSQUEDA DEL HEADER ==========
+  useEffect(() => {
+    if (location.state && location.state.selectedFile) {
+      const file = location.state.selectedFile;
+      
+      // Limpiamos el estado del historial para prevenir que se reabra al refrescar con F5
+      window.history.replaceState({}, document.title);
+
+      // Abrimos el panel lateral respetando la pestaña y carpeta actual del usuario
+      setElementoDetalle({
+        ...file,
+        tipo: file.isPersonal ? 'personal' : 'recibido'
+      });
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -553,7 +570,7 @@ export default function Dashboard() {
                 <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-accent)' }}>
                   <FaFolderPlus /> Crear Carpeta
                 </button>
-                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <FaUpload /> Subir Archivo
                 </button>
                 <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -646,7 +663,7 @@ export default function Dashboard() {
                       <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-medium)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '12px' }}>
                         <FaFolderOpen style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }} />
                         <p style={{ marginBottom: '20px' }}>Esta carpeta está vacía</p>
-                        <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
+                        <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
                         <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ border: '1px solid rgba(255,255,255,0.1)' }}><FaFolderPlus /> Crear carpeta</button>
                       </div>
                     )}
@@ -796,7 +813,6 @@ export default function Dashboard() {
         {/* MODAL VISUALIZADOR DE ARCHIVOS (Mantenido intacto) */}
         <FileViewerModal isOpen={!!viewerFile} onClose={() => setViewerFile(null)} file={viewerFile} onDownload={handleDownloadFromViewer} />
 
-        <Footer />
       </main>
     </PrivateLayout>
   );
