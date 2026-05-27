@@ -4,29 +4,31 @@
     <meta charset="UTF-8">
     <title th:text="${subject}">Notificación</title>
 </head>
-<body style="margin:0;padding:0;background:#090b14;color:#e2e8f0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#090b14;padding:40px 0;">
+<body style="margin:0;padding:0;background-color:#131924;color:#ffffff;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#131924;padding:40px 0;">
     <tr>
         <td align="center">
-            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;border-radius:22px;overflow:hidden;background:#0f172a;box-shadow:0 20px 60px rgba(0,0,0,0.35);border:1px solid rgba(147,197,253,0.12);">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;border-radius:16px;overflow:hidden;background-color:#1D263C;border:1px solid #0a3fff;box-shadow:0 0 20px rgba(10, 63, 255, 0.35);">
                 <tr>
-                    <td style="background:linear-gradient(135deg,#2563eb,#0ea5e9);padding:32px 30px;text-align:center;">
-                        <p style="margin:0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;">Notificación segura</p>
-                        <h1 style="margin:12px 0 0;color:#ffffff;font-size:28px;line-height:1.1;" th:text="${subject}">Nuevo mensaje</h1>
+                    <td style="background-color:#0a3fff;padding:25px 20px;text-align:center;">
+                        <p style="margin:0 0 5px;color:rgba(255,255,255,0.8);font-size:12px;letter-spacing:2px;text-transform:uppercase;">Notificación del Sistema</p>
+                        <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;" th:text="${subject}">Nuevo Mensaje</h1>
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:30px 32px 24px 32px;">
-                        <p style="margin:0 0 20px;font-size:16px;line-height:1.8;color:#cbd5e1;">Hola <span th:text="${nombre}"></span>,</p>
-                        <div style="background:#111827;border:1px solid rgba(148,163,184,0.15);border-radius:18px;padding:24px;margin-bottom:28px;">
-                            <p style="margin:0;font-size:16px;line-height:1.75;color:#e2e8f0;white-space:pre-line;" th:text="${message}">Aquí va el contenido dinámico del correo.</p>
+                    <td style="padding:40px 30px;">
+                        <p style="margin:0 0 20px;font-size:16px;color:#ffffff;">Hola <span th:text="${nombre}">Usuario</span>,</p>
+                        
+                        <div style="background-color:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:25px;margin-bottom:25px;">
+                            <p style="margin:0;font-size:15px;color:#A0ABC0;line-height:1.7;white-space:pre-line;" th:text="${message}">Aquí va el contenido dinámico del correo.</p>
                         </div>
-                        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;line-height:1.7;">Si no reconoces esta actividad, revisa tu cuenta inmediatamente.</p>
+                        
+                        <p style="margin:0;font-size:13px;color:#888888;line-height:1.5;">Si consideras que esta notificación es un error, por favor contacta a soporte.</p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background:#111827;padding:22px 32px 30px 32px;border-top:1px solid rgba(148,163,184,0.1);">
-                        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.7;">Plataforma de Transferencia Segura • Email automático</p>
+                    <td style="background-color:rgba(0,0,0,0.2);padding:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.05);">
+                        <p style="margin:0;font-size:12px;color:#888888;">Plataforma de Transferencia Segura</p>
                     </td>
                 </tr>
             </table>

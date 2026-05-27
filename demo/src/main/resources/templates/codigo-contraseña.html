@@ -2,33 +2,34 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Restablecimiento de contraseña</title>
+    <title>Restablecimiento de Contraseña</title>
 </head>
-<body style="margin:0;padding:0;background:#090b14;color:#e2e8f0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#090b14;padding:40px 0;">
+<body style="margin:0;padding:0;background-color:#131924;color:#ffffff;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#131924;padding:40px 0;">
     <tr>
         <td align="center">
-            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;border-radius:22px;overflow:hidden;background:#0f172a;box-shadow:0 20px 60px rgba(0,0,0,0.35);border:1px solid rgba(147,197,253,0.12);">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;border-radius:16px;overflow:hidden;background-color:#1D263C;border:1px solid #0a3fff;box-shadow:0 0 20px rgba(10, 63, 255, 0.25);">
                 <tr>
-                    <td style="background:linear-gradient(135deg,#2563eb,#0ea5e9);padding:32px 30px;text-align:center;">
-                        <p style="margin:0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;">Restablecer contraseña</p>
-                        <h1 style="margin:12px 0 0;color:#ffffff;font-size:28px;line-height:1.1;">Código de seguridad</h1>
+                    <td style="background-color:#0a3fff;padding:30px 20px;text-align:center;">
+                        <h1 style="margin:0;color:#131924;font-size:24px;font-weight:800;">Restablecer Contraseña</h1>
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:30px 32px 24px 32px;">
-                        <p style="margin:0 0 20px;font-size:16px;line-height:1.8;color:#cbd5e1;">Hola <span th:text="${nombre}"></span>,</p>
-                        <p style="margin:0 0 12px;color:#94a3b8;">"<span th:text="${messageIntro}"></span>"</p>
-                        <div style="background:#111827;border:1px solid rgba(148,163,184,0.15);border-radius:18px;padding:24px;margin-bottom:18px;text-align:center;">
-                            <p style="margin:0;font-size:28px;letter-spacing:6px;color:#e2e8f0;font-weight:700;" th:text="${code}">000000</p>
-                            <p style="margin:8px 0 0;font-size:13px;color:#94a3b8;">Código válido por <span th:text="${expirationMinutes}">30</span> minutos.</p>
+                    <td style="padding:40px 30px;">
+                        <p style="margin:0 0 15px;font-size:16px;color:#ffffff;">Hola <span th:text="${nombre}">Usuario</span>,</p>
+                        <p style="margin:0 0 25px;font-size:15px;color:#A0ABC0;line-height:1.6;" th:text="${messageIntro}">Este es tu código para continuar con el restablecimiento de tu contraseña.</p>
+                        
+                        <div style="background-color:rgba(10, 63, 255, 0.05);border:2px dashed #0a3fff;border-radius:12px;padding:25px;text-align:center;margin-bottom:25px;">
+                            <p style="margin:0;font-size:36px;letter-spacing:8px;color:#0a3fff;font-weight:700;" th:text="${code}">000000</p>
                         </div>
-                        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;line-height:1.7;">Si no solicitaste este cambio, ignora este mensaje o contacta soporte.</p>
+                        
+                        <p style="margin:0 0 10px;font-size:14px;color:#A0ABC0;text-align:center;">Este código de seguridad expira en <strong style="color:#ffffff;"><span th:text="${expirationMinutes}">30</span> minutos</strong>.</p>
+                        <p style="margin:0;font-size:13px;color:#888888;line-height:1.5;text-align:center;">Si no solicitaste un cambio de contraseña, te recomendamos revisar la seguridad de tu cuenta.</p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background:#111827;padding:22px 32px 30px 32px;border-top:1px solid rgba(148,163,184,0.1);">
-                        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.7;">Plataforma de Transferencia Segura • Email automático</p>
+                    <td style="background-color:rgba(0,0,0,0.2);padding:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.05);">
+                        <p style="margin:0;font-size:12px;color:#888888;">Plataforma de Transferencia Segura • Seguridad de Cuenta</p>
                     </td>
                 </tr>
             </table>
