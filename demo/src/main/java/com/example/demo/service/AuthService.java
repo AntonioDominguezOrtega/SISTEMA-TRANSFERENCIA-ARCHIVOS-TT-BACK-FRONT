@@ -8,12 +8,9 @@ import com.example.demo.model.User;
 import com.example.demo.repository.RoleRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtils;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,7 +28,6 @@ import java.util.UUID;
 public class AuthService {
 
     // Inyección de dependencias necesarias
-    private final AuthenticationManager authenticationManager; // Para validar usuario/password
     private final UserRepository userRepository; // Para guardar usuarios
     private final RoleRepository roleRepository; // Para asignar roles
     private final PasswordEncoder passwordEncoder; // Para encriptar contraseñas

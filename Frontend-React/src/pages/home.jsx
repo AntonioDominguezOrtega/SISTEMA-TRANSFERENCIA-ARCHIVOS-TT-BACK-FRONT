@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import Footer from '../components/Footer'
-import { FaShieldAlt, FaUserLock, FaKey, FaUpload, FaUserCheck, FaShareAlt } from 'react-icons/fa'
+import { FaShieldAlt, FaUserLock, FaKey, FaUpload, FaUserCheck, FaShareAlt, FaLockOpen } from 'react-icons/fa';
 
 export default function Home() {
   

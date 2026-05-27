@@ -1,6 +1,5 @@
 package com.example.demo.dto;
 
-import com.example.demo.model.AccessLevel;
 import com.example.demo.model.SecurityLevel;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

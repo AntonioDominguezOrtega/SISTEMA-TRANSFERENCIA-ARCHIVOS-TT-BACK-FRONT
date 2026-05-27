@@ -3,7 +3,6 @@ package com.example.demo.service;
 import com.example.demo.model.FileMetadata;
 import com.example.demo.model.FileShare;
 import com.example.demo.model.SecurityLevel;
-import com.example.demo.repository.FileMetadataRepository;
 import com.example.demo.repository.FileShareRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,11 +29,9 @@ public class FilePreviewService {
 
     private final AzureBlobService azureBlobService;
     private final FileShareRepository fileShareRepository;
-    private final FileMetadataRepository fileMetadataRepository;
     private final EncryptionService encryptionService;
 
     private static final int PREVIEW_WIDTH = 800; // Ancho máximo para imágenes
-    private static final int PREVIEW_QUALITY = 85;
 
     /**
      * Obtener vista previa de un archivo

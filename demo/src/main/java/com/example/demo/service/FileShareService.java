@@ -115,7 +115,7 @@ public class FileShareService {
                 }
 
                 // 3.6 Si el usuario marcó la casilla "Enviar copia a mí mismo"
-                if (request.getSendCopyToMyself()) {
+                if (Boolean.TRUE.equals(request.getSendCopyToMyself())) {
                     FileShare selfShare = createFileShare(saveMetadata, currentUser, currentUser, request);
                     fileShareRepository.save(selfShare);
                 }
@@ -145,7 +145,8 @@ public class FileShareService {
                 continue;
             }
 
-            FileShare share = createFileShare(file, currentUser, targetUser, request);
+            // Llamamos al método renombrado para evitar la confusión del compilador
+            FileShare share = createShareFromExistingFile(file, currentUser, targetUser, request);
             FileShare savedShare = fileShareRepository.save(share);
             sendSharingNotifications(savedShare, request);
             logAccess(currentUser, file, savedShare, AccessAction.SHARE, true, null);
@@ -222,7 +223,7 @@ public class FileShareService {
         fileShareRepository.save(share);
 
         // Decidir a qué número enviarlo
-        String phoneNumber = share.getUseCustomPhone() ? share.getCustomPhoneNumber() : currentUser.getPhone();
+        String phoneNumber = Boolean.TRUE.equals(share.getUseCustomPhone()) ? share.getCustomPhoneNumber() : currentUser.getPhone();
 
         // Enviar por SMS (Variable eliminada para evitar error de variable no usada)
         twilioService.sendVerificationCode(phoneNumber, token);
@@ -231,7 +232,7 @@ public class FileShareService {
         emailService.sendFileUnlockTokenEmail(currentUser.getEmail(), token, currentUser.getNombre(), share.getFile().getFileName());
 
         logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_REQUEST, true,
-            "Token enviado a " + maskPhoneNumber(phoneNumber));
+                "Token enviado a " + maskPhoneNumber(phoneNumber));
 
         return "Token enviado exitosamente";
     }
@@ -385,7 +386,7 @@ public class FileShareService {
 
             logAccess(currentUser, share.getFile(), share, AccessAction.VIEW, true, null);
 
-            if (share.getNotifyOnview()) {
+            if (Boolean.TRUE.equals(share.getNotifyOnview())) {
                 sendViewNotification(share);
             }
         }
@@ -421,7 +422,7 @@ public class FileShareService {
 
             logAccess(currentUser, share.getFile(), share, AccessAction.DOWNLOAD, true, null);
 
-            if (share.getNotifyOnDownload()) {
+            if (Boolean.TRUE.equals(share.getNotifyOnDownload())) {
                 sendDonwloadNotification(share);
             }
         }
@@ -457,7 +458,7 @@ public class FileShareService {
         List<FileShare> expiredShare = fileShareRepository.findExpiredShares(now);
 
         for (FileShare share : expiredShare) {
-            if (share.getSelfDestruct()) {
+            if (Boolean.TRUE.equals(share.getSelfDestruct())) {
                 azureBlobService.delateFile(share.getFile().getBlobUrl());
                 share.setIsActive(false);
                 share.setIsDestroyed(true);
@@ -526,7 +527,7 @@ public class FileShareService {
 
         // Reglas de negocio para seguridad con SMS del archivo
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            if (!request.getUseAccountPhone() && request.getCustomPhoneNumber() == null) {
+            if (!Boolean.TRUE.equals(request.getUseAccountPhone()) && request.getCustomPhoneNumber() == null) {
                 throw new RuntimeException("Debe especificar un numero de telefono allternativo");
             }
         }
@@ -546,13 +547,17 @@ public class FileShareService {
         }
 
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            if (!request.getUseAccountPhone() && request.getCustomPhoneNumber() == null) {
+            if (!Boolean.TRUE.equals(request.getUseAccountPhone()) && request.getCustomPhoneNumber() == null) {
                 throw new RuntimeException("Debe especificar un numero de telefono allternativo");
             }
         }
     }
 
-    // Pasamos los parametros al crear un nuevo archivo
+    // -----------------------------------------------------------------------------------------
+    // MÉTODOS DE CREACIÓN DE FILESHARE RENOMBRADOS PARA EVITAR AMBIGÜEDAD
+    // -----------------------------------------------------------------------------------------
+
+    // Método 1: Para cuando se sube un nuevo archivo
     private FileShare createFileShare(FileMetadata file, User sharedBy, User sharedWith, FileUploadRequest request) {
         log.info("📝 Creando FileShare - Asunto: '{}', Mensaje: '{}'", request.getSubject(), request.getMessage());
 
@@ -561,14 +566,16 @@ public class FileShareService {
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
-        share.setMessage(request.getMessage());  // ← Esta línea debe estar
+        share.setMessage(request.getMessage());
         share.setSharedAt(LocalDateTime.now());
         share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
         share.setSecurityLevel(request.getSecurityLevel());
-        share.setNotifyOnview(request.getNotifyOnview());
-        share.setNotifyOnDownload(request.getNotifyOnDownload());
-        share.setSelfDestruct(request.getSelfDestruct());
+        
+        share.setNotifyOnview(request.getNotifyOnview() != null ? request.getNotifyOnview() : false);
+        share.setNotifyOnDownload(request.getNotifyOnDownload() != null ? request.getNotifyOnDownload() : false);
+        share.setSelfDestruct(request.getSelfDestruct() != null ? request.getSelfDestruct() : false);
+        
         share.setIsActive(true);
         share.setIsUnlocked(false);
 
@@ -576,26 +583,33 @@ public class FileShareService {
             share.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            share.setUseCustomPhone(request.getUseAccountPhone()); // Pasamos el telefono que se utiliza en la cuenta
-            share.setCustomPhoneNumber(request.getCustomPhoneNumber()); // Pasamos numero so lo cambiamos
+            boolean useAccountPhone = request.getUseAccountPhone() != null ? request.getUseAccountPhone() : true;
+            share.setUseCustomPhone(!useAccountPhone); // Usamos custom si no usa el de la cuenta
+            share.setCustomPhoneNumber(request.getCustomPhoneNumber());
         }
 
         return share;
     }
 
-    private FileShare createFileShare(FileMetadata file, User sharedBy, User sharedWith, ShareExistingFileRequest request) {
+    // Método 2: Para cuando se comparte un archivo que ya estaba en la nube (RENOMBRADO)
+    private FileShare createShareFromExistingFile(FileMetadata file, User sharedBy, User sharedWith, ShareExistingFileRequest request) {
+        log.info("📝 Creando FileShare (Existente) - Asunto: '{}'", request.getSubject());
+
         FileShare share = new FileShare();
         share.setFile(file);
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
+        share.setMessage(request.getMessage());
         share.setSharedAt(LocalDateTime.now());
-        share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
+        share.setExpiresAt(calculateExistingExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
         share.setSecurityLevel(request.getSecurityLevel());
-        share.setNotifyOnview(request.getNotifyOnView());
-        share.setNotifyOnDownload(request.getNotifyOnDownload());
-        share.setSelfDestruct(request.getSelfDestruct());
+        
+        share.setNotifyOnview(request.getNotifyOnView() != null ? request.getNotifyOnView() : false);
+        share.setNotifyOnDownload(request.getNotifyOnDownload() != null ? request.getNotifyOnDownload() : false);
+        share.setSelfDestruct(request.getSelfDestruct() != null ? request.getSelfDestruct() : false);
+        
         share.setIsActive(true);
         share.setIsUnlocked(false);
 
@@ -603,16 +617,20 @@ public class FileShareService {
             share.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            share.setUseCustomPhone(request.getUseAccountPhone());
+            boolean useAccountPhone = request.getUseAccountPhone() != null ? request.getUseAccountPhone() : true;
+            share.setUseCustomPhone(!useAccountPhone);
             share.setCustomPhoneNumber(request.getCustomPhoneNumber());
         }
-
-        log.info("📝 FileShare creado - ID: {}, Mensaje guardado: '{}'", share.getId(), share.getMessage());
 
         return share;
     }
 
-    private LocalDateTime calculateExpiration (FileUploadRequest.ExpirationTime expirationTime) {
+    // -----------------------------------------------------------------------------------------
+    // CALCULADORES DE EXPIRACIÓN
+    // -----------------------------------------------------------------------------------------
+
+    private LocalDateTime calculateExpiration(FileUploadRequest.ExpirationTime expirationTime) {
+        if (expirationTime == null) return LocalDateTime.now().plusDays(30);
         return switch (expirationTime) {
             case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
@@ -623,7 +641,8 @@ public class FileShareService {
         };
     }
 
-    private LocalDateTime calculateExpiration (ShareExistingFileRequest.ExpirationTime expirationTime) {
+    private LocalDateTime calculateExistingExpiration(ShareExistingFileRequest.ExpirationTime expirationTime) {
+        if (expirationTime == null) return LocalDateTime.now().plusDays(30);
         return switch (expirationTime) {
             case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
@@ -796,7 +815,7 @@ public class FileShareService {
                 .donwloadCount(share.getDownloadCount())
                 .hasPassword(share.getPasswordHash() != null && !share.getPasswordHash().isEmpty())
                 .subject(share.getSubject())
-                .message(share.getMessage())  // ← CORREGIDO: Ahora envía el mensaje real
+                .message(share.getMessage())  
                 .build();
     }
 
@@ -870,10 +889,10 @@ public class FileShareService {
     }
 
     private void validateFileAccess(FileShare share, User currentUser) {
-        if (!share.getIsActive()) {
+        if (!Boolean.TRUE.equals(share.getIsActive())) {
             throw new RuntimeException("Este archivo ya no está disponible");
         }
-        if (share.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (share.getExpiresAt() != null && share.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Este archivo ha expirado");
         }
 
@@ -881,7 +900,7 @@ public class FileShareService {
         boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
 
         if (!isOwner && share.getSecurityLevel() != SecurityLevel.PUBLIC) {
-            if (!share.getIsUnlocked() || share.getUnlockedUntil().isBefore(LocalDateTime.now())) {
+            if (!Boolean.TRUE.equals(share.getIsUnlocked()) || (share.getUnlockedUntil() != null && share.getUnlockedUntil().isBefore(LocalDateTime.now()))) {
                 throw new RuntimeException("Este archivo está bloqueado. Solicite un token SMS o ingrese la contraseña");
             }
         }

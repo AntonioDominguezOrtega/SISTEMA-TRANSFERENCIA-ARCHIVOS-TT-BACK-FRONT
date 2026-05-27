@@ -33,7 +33,6 @@ import java.util.UUID;
 public class AzureBlobService {
 
     private final BlobContainerClient blobContainerClient;
-    private final EncryptionService encryptionService;
 
     /**
      * Sube un archivo a Azure Blob Storage.

@@ -2,10 +2,8 @@ package com.example.demo.dto;
 
 import com.example.demo.model.AccessLevel;
 import com.example.demo.model.SecurityLevel;
-import jakarta.mail.Message;
 import jakarta.validation.constraints.*;
 import lombok.Data;
-import lombok.NonNull;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
