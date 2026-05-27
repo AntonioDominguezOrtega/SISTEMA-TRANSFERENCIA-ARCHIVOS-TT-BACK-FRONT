@@ -104,8 +104,6 @@ export default function Dashboard() {
   const [personalFolders, setPersonalFolders] = useState([]);
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [folderPath, setFolderPath] = useState([]);
-  const [recentItems, setRecentItems] = useState([]);
-  const [favoriteItems, setFavoriteItems] = useState([]);
   
   const [trashItems, setTrashItems] = useState([]);
   const [pestanaActiva, setPestanaActiva] = useState('miunidad'); // Internamente 'miunidad' mapeará al diseño 'todo'
@@ -150,10 +148,7 @@ export default function Dashboard() {
   const loadFavorites = async () => {
     try {
       const result = await storageService.getFavorites();
-      const favoriteList = result.favorites || result || [];
       setFavoritos(result.favorites || []);
-      setFavoriteItems(favoriteList);
-      
     } catch (err) {
       console.error('Error cargando favoritos:', err);
     }
@@ -190,26 +185,17 @@ export default function Dashboard() {
       else if (pestanaActiva === 'miunidad') {
         const result = await storageService.getFolderContents(currentFolderId);
         const contents = result.contents || [];
-        const filteredContents = contents.filter(item => item.name !== 'Mi unidad' && item.name !== 'Mi Unidad');
+        
+        const filteredContents = contents.filter(item => {
+          if (item.name === 'Mi unidad' || item.name === 'Mi Unidad') return false;
+          return true;
+        });
+        
         const carpetas = filteredContents.filter(item => item.isFolder === true);
         const archivos = filteredContents.filter(item => item.isFolder !== true);
+        
         setPersonalFolders(carpetas);
         setPersonalFiles(archivos);
-      }
-      else if (pestanaActiva === 'recientes') {
-        const [recentPersonal, recentShared] = await Promise.all([
-          storageService.getRecentPersonalFiles(),
-          storageService.getRecentSharedFiles()
-        ]);
-        const personal = recentPersonal.files || recentPersonal || [];
-        const shared = recentShared.files || recentShared || [];
-        setRecentItems([...personal, ...shared]);
-      }
-      else if (pestanaActiva === 'favoritos') {
-        const result = await storageService.getFavorites();
-        const favoriteList = result.favorites || result || [];
-        setFavoriteItems(favoriteList);
-        setFavoritos(favoriteList);
       }
       else if (pestanaActiva === 'papelera') {
         const result = await dashboardService.getTrash();
@@ -475,7 +461,7 @@ export default function Dashboard() {
   };
 
   const renderSharedFileCard = (item, type) => {
-    const isUnlocked = item.inUnlocked === true;
+    const isUnlocked = item.isUnlocked === true || item.inUnlocked === true;
     const hasPassword = item.hasPassword === true;
     const isExpired = item.expiresAt && new Date(item.expiresAt) < new Date();
     
@@ -541,7 +527,7 @@ export default function Dashboard() {
     );
   };
 
-  const isLoadingVisible = loading && ['recibidos', 'enviados', 'miunidad', 'recientes', 'favoritos', 'papelera'].includes(pestanaActiva);
+  const isLoading = loading && (pestanaActiva === 'recibidos' || pestanaActiva === 'enviados' || pestanaActiva === 'miunidad' || pestanaActiva === 'papelera');
 
   return (
     <PrivateLayout>

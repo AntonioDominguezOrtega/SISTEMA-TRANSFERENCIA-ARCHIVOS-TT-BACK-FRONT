@@ -970,9 +970,9 @@ public class StorageService {
     private StorageItemResponse mapToStorageResponse(FileMetadata item, User currentUser) {
         log.info("📦 Mapeando item: {} (isFolder: {})", item.getFileName(), item.getIsFolder());
 
-        // Valores por defecto usando los Enums correspondientes
-        SecurityLevel securityLevel = SecurityLevel.PUBLIC;
-        AccessLevel accessLevel = AccessLevel.DOWNLOAD; // ← CORRECCIÓN: Usar Enum en lugar de String
+        // Valores por defecto
+        String securityLevel = "PUBLIC";
+        String accessLevel = "DOWNLOAD";
         Boolean isUnlocked = true;
         LocalDateTime unlockedUntil = null;
         Boolean hasPassword = false;
@@ -982,8 +982,8 @@ public class StorageService {
             Optional<FileShare> share = fileShareRepository.findByFile_IdAndSharedWith(item.getId(), currentUser);
             if (share.isPresent()) {
                 FileShare fs = share.get();
-                securityLevel = fs.getSecurityLevel().toString();
-                accessLevel = fs.getAccessLevel().toString();
+                securityLevel = fs.getSecurityLevel().name();
+                accessLevel = fs.getAccessLevel().name();
                 hasPassword = fs.getPasswordHash() != null && !fs.getPasswordHash().isEmpty();
                 isUnlocked = fs.getIsUnlocked() != null && fs.getIsUnlocked() &&
                         fs.getUnlockedUntil() != null && fs.getUnlockedUntil().isAfter(LocalDateTime.now());
@@ -1003,28 +1003,13 @@ public class StorageService {
                 .fileType(item.getFileType())
                 .fileSize(item.getFileSize())
                 .uploadedAt(item.getUploadedAt())
-                .securityLevel(securityLevel)      // ← NUEVO: Nivel de seguridad
-                .accessLevel(accessLevel)          // ← NUEVO: Permiso (DOWNLOAD/READ_ONLY)
+                .securityLevel(securityLevel)      // ← String
+                .accessLevel(accessLevel)          // ← String
                 .hasPassword(hasPassword)          // ← NUEVO: Si tiene contraseña
                 .isLocked(!isUnlocked && !"PUBLIC".equals(securityLevel))  // ← NUEVO: Si está bloqueado
                 .isUnlocked(isUnlocked)            // ← NUEVO: Si está desbloqueado
                 .unlockedUntil(unlockedUntil)      // ← NUEVO: Hasta cuándo está desbloqueado
                 .build();
-    }
-
-    private SecurityLevel getPersonalFileShareSecurityLevel(FileMetadata item, User user) {
-        if (item.getIsFolder()) return SecurityLevel.PUBLIC;
-        return fileShareRepository.findByFile_IdAndSharedWith(item.getId(), user)
-                .map(FileShare::getSecurityLevel)
-                .orElse(SecurityLevel.PUBLIC);
-    }
-
-    private String extractBlobPath(String blobUrl) {
-        if (blobUrl == null || blobUrl.isEmpty()) {
-            return "unknown";
-        }
-        String blobName = blobUrl.substring(blobUrl.lastIndexOf("/") + 1);
-        return blobName.isEmpty() ? "unknown" : blobName;
     }
 
     private String generateChecksum(MultipartFile file) {
@@ -1335,25 +1320,9 @@ public class StorageService {
         }
     }
 
-    private void deleteSharesForFolderContents(FileMetadata folder) {
-        List<FileMetadata> contents = fileMetadataRepository.findByParentFolder(folder);
-        for (FileMetadata item : contents) {
-            if (item.getIsFolder()) {
-                deleteSharesForFolderContents(item);
-            } else {
-                List<FileShare> shares = fileShareRepository.findByFile_Id(item.getId());
-                for (FileShare share : shares) {
-                    notificationRepository.deleteByFileShare(share);
-                    favoriteRepository.deleteByFileShare(share);
-                    accessLogRepository.deleteByFileShare(share);
-                    fileShareRepository.delete(share);
-                }
-            }
-        }
-    }
-// ==============================================================
-// 10. CADUCADOS
-// ==============================================================
+    // ==============================================================
+    // 10. CADUCADOS
+    // ==============================================================
 
     @Transactional(readOnly = true)
     public List<ExpiredShareResponse> getExpiredShares() {
@@ -1454,6 +1423,8 @@ public class StorageService {
                 .securityLevel(share.getSecurityLevel().toString())
                 .build();
     }
+
+    // En StorageService.java, agrega este método:
 
     /**
      * Genera URL para vista previa de archivo personal (solo lectura)

@@ -3,16 +3,11 @@ package com.example.demo.controller;
 import com.example.demo.dto.*;
 import com.example.demo.model.RecoveryMethod;
 import com.example.demo.model.User;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.security.JwtUtils;
 import com.example.demo.service.AuthService;
-import com.example.demo.service.UserDetailsImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,9 +28,7 @@ public class AuthController {
 
     // Inyectamos nuestro servicio inteligente (donde está la lógica de Twilio y JWT)
     private final AuthService authService;
-    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
 
     /**
      * REGISTRO DE USUARIO

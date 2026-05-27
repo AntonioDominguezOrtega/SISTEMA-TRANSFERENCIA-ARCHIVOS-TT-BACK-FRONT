@@ -1,6 +1,5 @@
 package com.example.demo.repository;
 
-import com.example.demo.model.FileMetadata;
 import com.example.demo.model.FileShare;
 import com.example.demo.model.Notification;
 import com.example.demo.model.User;

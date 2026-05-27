@@ -62,7 +62,6 @@ public class FilePreviewController {
             @RequestHeader(value = "Range", required = false) String range) {
 
         try {
-            // TODO: Implementar streaming de contenido parcial (HTTP 206 Partial Content).
             // Para implementar esto con archivos CIFRADOS, la lógica es muy compleja porque
             // el AES GCM requiere desencriptar el bloque entero para verificar la firma.
             // Una opción es dar un SAS Token de Azure que soporte el streaming nativo,
