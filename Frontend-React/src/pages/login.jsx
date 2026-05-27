@@ -263,9 +263,8 @@ export default function Login() {
 
                 <input type="text" placeholder="Nombre de Usuario" value={regUsername} onChange={(e) => setRegUsername(e.target.value)} required />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input type="email" placeholder="Correo Principal" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
-                  <input type="email" placeholder="Correo Extra" value={regEmailRecuperacion} onChange={(e) => setRegEmailRecuperacion(e.target.value)} required />
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <input type="email" placeholder="Correo Electrónico" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
                 </div>
 
                 <input type="tel" placeholder="Teléfono Celular" value={regTel} onChange={(e) => setRegTel(e.target.value)} required />
