@@ -6,6 +6,7 @@ import FileSelectorModal from '../components/FileSelectorModal';
 
 // Servicios Reales
 import profileService from '../services/configService';
+import profileService from '../services/profileService';
 import searchService from '../services/searchService';
 
 // React Icons
@@ -63,6 +64,7 @@ export default function EnviarArchivo() {
   // ========== NOTIFICACIONES ==========
   const [notifyOnView, setNotifyOnView] = useState(false);
   const [notifyOnDownload, setNotifyOnDownload] = useState(false);
+  const [selfDestruct, setSelfDestruct] = useState(false);
   
   // ========== ESTADOS DE UI ==========
   const [isUploading, setIsUploading] = useState(false);
@@ -77,7 +79,7 @@ export default function EnviarArchivo() {
   ];
 
   // ============================================================
-  // 1. CARGAR MIS CONTACTOS Y AUTO-SELECCIONAR DESDE LA URL
+  // 1. CARGAR MIS CONTACTOS
   // ============================================================
   useEffect(() => {
     const loadContacts = async () => {
@@ -308,6 +310,7 @@ export default function EnviarArchivo() {
           expirationTime: expirationTime,
           notifyOnview: notifyOnView,
           notifyOnDownload: notifyOnDownload,
+          selfDestruct: selfDestruct,
           message: mensaje || null,
           subject: asunto || null
         };
@@ -344,6 +347,7 @@ export default function EnviarArchivo() {
             expirationTime: expirationTime,
             notifyOnView: notifyOnView,
             notifyOnDownload: notifyOnDownload,
+            selfDestruct: selfDestruct,
             message: mensaje || null,
             subject: asunto || null,
             sendCopyToMyself: false

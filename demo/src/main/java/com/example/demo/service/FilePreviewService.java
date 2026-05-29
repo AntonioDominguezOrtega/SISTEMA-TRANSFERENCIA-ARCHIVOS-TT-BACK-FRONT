@@ -171,15 +171,13 @@ public class FilePreviewService {
             throw new RuntimeException("El archivo ya no esta disponible");
         }
 
-        // AGREGADO: share.getExpiresAt() != null
-        if (share.getExpiresAt() != null && share.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+        if (share.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
             throw new RuntimeException("El archivo ha expirado");
         }
 
         if (share.getSecurityLevel() == SecurityLevel.TOKEN_SMS) {
-            // AGREGADO: share.getUnlockedUntil() != null
             if (!share.getIsUnlocked() ||
-                (share.getUnlockedUntil() != null && share.getUnlockedUntil().isBefore(java.time.LocalDateTime.now()))) {
+                share.getUnlockedUntil().isBefore(java.time.LocalDateTime.now())) {
                 throw new RuntimeException("El archivo esta bloqueado. Solicita un token SMS");
             }
         }

@@ -322,50 +322,42 @@ export default function Dashboard() {
   const handleVerificarToken = async (itemId, isPersonal = true) => { /* ... código original ... */ };
   const handleVerificarPassword = async (itemId, isPersonal = true) => { /* ... código original ... */ };
   
-  const handleDownload = async (itemId, isPersonal = true, fileName = 'archivo') => {
-    try {
-      let result;
-      if (isPersonal) {
-        result = await storageService.downloadPersonalFile(itemId);
-      } else {
-        const { default: fileShareService } = await import('../services/fileShareService');
-        result = await fileShareService.downloadFile(itemId);
-      }
-      const link = document.createElement('a');
-      link.href = result.downloadUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
-    }
-  };
 
+// ========== FUNCIÓN HANDLEOPENFILE CORREGIDA ==========
   const handleOpenFile = async (itemId, isPersonal = true, fileData = null) => {
     try {
       let result;
-      let previewUrl = null;
+      let previewBlob = null;
       let downloadUrl = null;
       let canDownload = false;
+      let fileType = '';
+      let fileName = '';
       
       if (isPersonal) {
-        const previewResult = await storageService.getPreviewUrl(itemId);
-        previewUrl = previewResult.previewUrl;
+        // Obtener el archivo como BLOB (bytes descifrados) - PARA TODOS LOS TIPOS
+        const blobResponse = await storageService.getPreviewBlob(itemId);
+        previewBlob = blobResponse.blob;
+        fileType = blobResponse.fileType;
+        fileName = blobResponse.fileName;
+        
         result = await storageService.openPersonalFile(itemId);
         canDownload = true;
-        if (canDownload) {
-          const downloadResult = await storageService.downloadPersonalFile(itemId);
-          downloadUrl = downloadResult.downloadUrl;
-        }
+        
+        const downloadResult = await storageService.downloadPersonalFile(itemId);
+        downloadUrl = downloadResult.downloadUrl;
       } else {
         const { default: fileShareService } = await import('../services/fileShareService');
-        const previewResult = await fileShareService.getPreviewUrl(itemId);
-        previewUrl = previewResult.previewUrl;
+        
+        // Obtener el archivo como BLOB (bytes descifrados) - PARA TODOS LOS TIPOS
+        const blobResponse = await fileShareService.getPreviewBlob(itemId);
+        previewBlob = blobResponse.blob;
+        fileType = blobResponse.fileType;
+        fileName = blobResponse.fileName;
+        
         result = await fileShareService.viewFile(itemId);
         
-        const fileInfo = result.file || result;
-        canDownload = fileInfo.accessLevel === 'DOWNLOAD';
+        const fileInfoResult = result.file || result;
+        canDownload = fileInfoResult.accessLevel === 'DOWNLOAD';
         
         if (canDownload) {
           const downloadResult = await fileShareService.downloadFile(itemId);
@@ -373,17 +365,17 @@ export default function Dashboard() {
         }
       }
       
-      const fileDataObj = result.file || result;
-      const fileType = fileDataObj?.fileType || fileData?.fileType || '';
+      const objectUrl = URL.createObjectURL(previewBlob);
       
       setViewerFile({
         id: itemId,
-        name: fileDataObj?.name || fileData?.name || fileDataObj?.fileName || 'Archivo',
-        fileName: fileDataObj?.fileName || fileData?.fileName,
+        name: fileName,
+        fileName: fileName,
         fileType: fileType,
-        fileSize: fileDataObj?.fileSize || fileData?.fileSize,
+        fileSize: fileData?.fileSize || 0,
         downloadUrl: canDownload ? downloadUrl : null,
-        previewUrl: previewUrl
+        previewBlob: objectUrl,
+        isPersonal: isPersonal
       });
       
     } catch (err) {
@@ -396,14 +388,35 @@ export default function Dashboard() {
     }
   };
 
-  const handleDownloadFromViewer = () => {
-    if (viewerFile?.downloadUrl) {
+  // ========== FUNCIÓN HANDLEDOWNLOAD CORREGIDA ==========
+  const handleDownload = async (itemId, isPersonal = true, fileName = 'archivo') => {
+    try {
+      let result;
+      
+      if (isPersonal) {
+        result = await storageService.downloadPersonalFileBlob(itemId);
+      } else {
+        const { default: fileShareService } = await import('../services/fileShareService');
+        result = await fileShareService.downloadFileBlob(itemId);
+      }
+      
+      // ✅ USAR EL NOMBRE DEL RESULTADO O EL QUE VIENE POR PARÁMETRO
+      const nombreArchivo = result.fileName || fileName;
+      
+      const blobUrl = URL.createObjectURL(result.blob);
       const link = document.createElement('a');
-      link.href = viewerFile.downloadUrl;
-      link.download = viewerFile.name || viewerFile.fileName || 'archivo';
+      link.href = blobUrl;
+      link.download = nombreArchivo;  // ← Aquí usamos el nombre correcto
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      setPanelMessage({ type: 'success', text: 'Descarga completada' });
+      
+    } catch (err) {
+      console.error('Error en descarga:', err);
+      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
     }
   };
 
@@ -477,8 +490,44 @@ export default function Dashboard() {
     );
   };
 
+    // ========== DESCARGA DESDE EL VISOR MODAL ==========
+  const handleDownloadFromViewer = async () => {
+    if (!viewerFile) return;
+    
+    try {
+      let result;
+      
+      const isPersonal = viewerFile.isPersonal === true;
+      
+      if (isPersonal) {
+        result = await storageService.downloadPersonalFileBlob(viewerFile.id);
+      } else {
+        const { default: fileShareService } = await import('../services/fileShareService');
+        result = await fileShareService.downloadFileBlob(viewerFile.id);
+      }
+      
+      // USAR EL NOMBRE DEL RESULTADO
+      const nombreArchivo = result.fileName || viewerFile.name || 'archivo';
+      
+      const blobUrl = URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = nombreArchivo;  // ← Aquí usamos el nombre correcto
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      setPanelMessage({ type: 'success', text: 'Descarga completada' });
+      
+    } catch (err) {
+      console.error('Error en descarga desde visor:', err);
+      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
+    }
+  };
+
   const renderSharedFileCard = (item, type) => {
-    const isUnlocked = item.isUnlocked === true || item.inUnlocked === true;
+    const isUnlocked = item.inUnlocked === true;
     const hasPassword = item.hasPassword === true;
     const isExpired = item.expiresAt && new Date(item.expiresAt) < new Date();
     
@@ -570,7 +619,7 @@ export default function Dashboard() {
                 <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-accent)' }}>
                   <FaFolderPlus /> Crear Carpeta
                 </button>
-                <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <FaUpload /> Subir Archivo
                 </button>
                 <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -663,7 +712,7 @@ export default function Dashboard() {
                       <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-medium)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '12px' }}>
                         <FaFolderOpen style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }} />
                         <p style={{ marginBottom: '20px' }}>Esta carpeta está vacía</p>
-                        <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
+                        <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
                         <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ border: '1px solid rgba(255,255,255,0.1)' }}><FaFolderPlus /> Crear carpeta</button>
                       </div>
                     )}

@@ -144,7 +144,10 @@ public class SearchService {
     }
 
     private List<SearchSuggestionResponse> suggestPersonalFiles(User user, String searchTerm) {
-        List<FileMetadata> personalFiles = fileMetadataRepository.findByUploadedBy(user); // SIN EL FILTRO DE isDeleted
+        List<FileMetadata> personalFiles = fileMetadataRepository.findByUploadedBy(user)
+                .stream()
+                .filter(file -> !Boolean.TRUE.equals(file.getIsDeleted()))
+                .collect(Collectors.toList());
 
         return personalFiles.stream()
                 .filter(file -> file.getFileName().toLowerCase().contains(searchTerm))

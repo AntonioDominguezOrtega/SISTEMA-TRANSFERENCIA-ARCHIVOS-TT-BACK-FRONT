@@ -5,15 +5,18 @@ import com.example.demo.service.FileShareService;
 import com.example.demo.service.StorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/storage")
@@ -272,14 +275,33 @@ public class StorageController {
      * Descargar archivo personal (genera SAS token)
      */
     @GetMapping("/{fileId}/download")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> downloadPersonalFile(@PathVariable String fileId) {
         try {
-            String downloadUrl = storageService.downloadPersonalFile(fileId);
-            return ResponseEntity.ok(Map.of(
-                    "downloadUrl", downloadUrl,
-                    "message", "URL de descarga generada (válida por 1 hora)"
-            ));
+            // Usar el nuevo método que devuelve bytes descifrados
+            byte[] fileBytes = storageService.downloadPersonalFileBytes(fileId);
+            StorageItemResponse item = storageService.getItemInfo(fileId);
+
+            String contentType = item.getFileType();
+            if (contentType == null || contentType.isEmpty()) {
+                contentType = "application/octet-stream";
+            }
+
+            // Codificar el nombre del archivo
+            String fileName = item.getName();
+            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                    .replaceAll("\\+", "%20");
+
+            log.info("Descargando archivo personal: {}, tamaño: {} bytes", fileName, fileBytes.length);
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
+                    .header("Content-Type", contentType)
+                    .header("Content-Length", String.valueOf(fileBytes.length))
+                    .body(fileBytes);
+
         } catch (Exception e) {
+            log.error("Error en descarga personal: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -455,13 +477,57 @@ public class StorageController {
      * Obtener URL para vista previa (solo lectura, sin permisos de descarga)
      */
     @GetMapping("/{fileId}/preview")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getPreviewUrl(@PathVariable String fileId) {
         try {
-            String previewUrl = storageService.getPreviewUrl(fileId);
-            return ResponseEntity.ok(Map.of("previewUrl", previewUrl));
+            StorageItemResponse item = storageService.getItemInfo(fileId);
+            String fileType = item.getFileType();
+
+            log.info("📄 Archivo personal - Tipo: {}, Nombre: {}", fileType, item.getName());
+
+            // ✅ Para TODOS los tipos, devolver bytes descifrados
+            byte[] decryptedBytes = storageService.getDecryptedFileBytes(fileId);
+
+            String fileName = item.getName();
+            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                    .replaceAll("\\+", "%20");
+
+            String contentType = determineContentType(fileType, fileName);
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", contentType)
+                    .header("Content-Disposition", "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
+                    .header("Content-Length", String.valueOf(decryptedBytes.length))
+                    .body(decryptedBytes);
+
         } catch (Exception e) {
+            log.error("❌ Error en preview personal: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
+    /**
+     * Determina el Content-Type basado en el tipo de archivo o extensión
+     */
+    private String determineContentType(String fileType, String fileName) {
+        // Si tenemos el fileType de la BD, usarlo
+        if (fileType != null && !fileType.isEmpty() && !"application/octet-stream".equals(fileType)) {
+            return fileType;
+        }
+
+        // Fallback: detectar por extensión
+        String lowerFileName = fileName.toLowerCase();
+        if (lowerFileName.endsWith(".png")) return "image/png";
+        if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg")) return "image/jpeg";
+        if (lowerFileName.endsWith(".gif")) return "image/gif";
+        if (lowerFileName.endsWith(".webp")) return "image/webp";
+        if (lowerFileName.endsWith(".mp4")) return "video/mp4";
+        if (lowerFileName.endsWith(".webm")) return "video/webm";
+        if (lowerFileName.endsWith(".pdf")) return "application/pdf";
+        if (lowerFileName.endsWith(".txt")) return "text/plain";
+        if (lowerFileName.endsWith(".json")) return "application/json";
+        if (lowerFileName.endsWith(".csv")) return "text/csv";
+
+        return "application/octet-stream";
+    }
 }

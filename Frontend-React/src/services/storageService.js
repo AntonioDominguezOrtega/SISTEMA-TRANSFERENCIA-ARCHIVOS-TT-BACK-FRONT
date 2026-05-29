@@ -239,6 +239,71 @@ const storageService = {
     const response = await api.get(`/storage/${fileId}`);
     return response.data;
   },
+  // Obtener vista previa como BLOB (bytes) para PDFs
+  getPreviewBlob: async (fileId) => {
+    console.log('🔍 storageService.getPreviewBlob llamado con fileId:', fileId);
+    try {
+      const response = await api.get(`/storage/${fileId}/preview`, {
+        responseType: 'blob'
+      });
+      
+      console.log('📥 Respuesta recibida, status:', response.status);
+      console.log('📥 Content-Type:', response.headers['content-type']);
+      
+      // Extraer el nombre del archivo de los headers
+      const contentDisposition = response.headers['content-disposition'];
+      let fileName = 'archivo.pdf';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match && match[1]) {
+          fileName = match[1].replace(/['"]/g, '');
+        }
+      }
+      
+      const fileType = response.headers['content-type'] || 'application/pdf';
+      
+      return {
+        blob: response.data,
+        fileName: fileName,
+        fileType: fileType
+      };
+    } catch (error) {
+      console.error('❌ Error en getPreviewBlob:', error);
+      throw error;
+    }
+  },
+  // Descargar archivo personal como BLOB (bytes ya descifrados)
+  downloadPersonalFileBlob: async (fileId) => {
+    console.log('🔍 downloadPersonalFileBlob llamado con fileId:', fileId);
+    try {
+      const response = await api.get(`/storage/${fileId}/download`, {
+        responseType: 'blob'
+      });
+      
+      console.log('📥 Respuesta recibida, status:', response.status);
+      console.log('📥 Content-Type:', response.headers['content-type']);
+      
+      const contentDisposition = response.headers['content-disposition'];
+      let fileName = 'archivo';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match && match[1]) {
+          fileName = match[1].replace(/['"]/g, '');
+        }
+      }
+      
+      const fileType = response.headers['content-type'] || 'application/octet-stream';
+      
+      return {
+        blob: response.data,
+        fileName: fileName,
+        fileType: fileType
+      };
+    } catch (error) {
+      console.error('❌ Error en downloadPersonalFileBlob:', error);
+      throw error;
+    }
+  },
 };
 
 export default storageService;

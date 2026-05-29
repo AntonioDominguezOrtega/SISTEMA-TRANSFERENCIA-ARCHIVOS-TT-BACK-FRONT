@@ -202,29 +202,40 @@ export default function PrivateHeader({ toggleSidebar }) {
     
     if (item.type === 'FOLDER') {
       navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
-      return;
-    }
-
-    // Enviamos el objeto con toda la metadata recolectada directamente al estado de navegación
-    navigate('/dashboard', { 
-      state: { 
-        selectedFile: {
-          id: item.type === 'PERSONAL' ? item.id : undefined,
-          shareId: item.type === 'SHARED' ? item.id : undefined,
-          itemId: item.id,
-          name: item.name,
-          fileName: item.name,
-          fileType: item.fileType,
-          fileSize: item.fileSize,
-          securityLevel: item.securityLevel,
-          isUnlocked: item.isUnlocked,
-          isExpired: item.isExpired,
-          accessLevel: item.accessLevel,
-          sharedBy: item.sharedBy,
-          isPersonal: item.type === 'PERSONAL'
+    } else if (item.type === 'PERSONAL') {
+      navigate('/dashboard', { 
+        state: { 
+          selectedFile: {
+            id: item.id,
+            name: item.name,
+            type: 'personal',
+            fileType: item.fileType,
+            fileSize: item.fileSize,
+            securityLevel: item.securityLevel,
+            isUnlocked: item.isUnlocked,
+            isExpired: false
+          }
         }
-      }
-    });
+      });
+    } else if (item.type === 'SHARED') {
+      navigate('/dashboard', { 
+        state: { 
+          selectedFile: {
+            shareId: item.id,
+            name: item.name,
+            type: 'shared',
+            fileType: item.fileType,
+            fileSize: item.fileSize,
+            securityLevel: item.securityLevel,
+            isUnlocked: item.isUnlocked,
+            isExpired: item.isExpired,
+            sharedBy: item.sharedBy
+          }
+        }
+      });
+    } else {
+      navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
+    }
   };
 
   const handleMarkAsRead = async (notificationId) => {
@@ -249,24 +260,19 @@ export default function PrivateHeader({ toggleSidebar }) {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      // Desconectar websocket si está disponible
-      // websocketService.disconnect();
-      
-      // Limpiar almacenamiento local
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Navegar a home
-      navigate('/', { replace: true });
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-      // Aun así limpia y navega aunque falle
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate('/', { replace: true });
+  const handleLogout = () => {
+    if (typeof websocketService !== 'undefined') {
+      try {
+        websocketService.disconnect();
+      } catch(e) {
+        console.error('Error al desconectar WebSocket:', e);
+      }
     }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.clear();
+    setShowUserMenu(false);
+    navigate('/');
   };
 
   // Formatear tiempo de notificación
