@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
 import DetallesModal from '../components/DetallesModal'
+import storageService from '../services/storageService'
 
 const getSecurityBadge = (status) => {
   if (status === 'password') return <span title="Bloqueada con contraseña" style={{ fontSize: '1rem', marginRight: '6px' }}>🔒</span>;

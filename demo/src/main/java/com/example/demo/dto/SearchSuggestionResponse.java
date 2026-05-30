@@ -8,7 +8,15 @@ import lombok.Data;
 public class SearchSuggestionResponse {
     private String id;
     private String name;
-    private String type;      // "PERSONAL", "SHARED", "FOLDER"
-    private String location;  // Ubicación resumida
-    private String icon;      // "📄", "📁", "📩"
+    private String type;          
+    private String location;      
+    private String icon;          
+    private String folderId;     
+    private Long fileSize;
+    private String fileType;
+    private String securityLevel;
+    private Boolean isUnlocked;
+    private Boolean isExpired;
+    private String accessLevel;
+    private String sharedBy;
 }

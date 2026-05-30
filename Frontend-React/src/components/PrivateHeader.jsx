@@ -219,9 +219,110 @@ export default function PrivateHeader({ toggleSidebar }) {
           <button className="icon-btn" onClick={() => setShowNotifications(!showNotifications)}>🔔</button>
           
           {showNotifications && (
-            <div className="notifications-dropdown" style={{ position: 'absolute', top: '130%', right: '0', width: '300px', backgroundColor: 'var(--color-primary)', boxShadow: 'var(--shadow-medium)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', zIndex: 1000, padding: '16px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: 'var(--color-accent)' }}>Notificaciones</h3>
-              <p style={{ color: 'var(--color-text-medium)', textAlign: 'center', margin: 0, fontSize: '0.9rem' }}>No hay novedades</p>
+            <div className="notifications-dropdown" style={{
+              position: 'absolute', top: '130%', right: '0', width: '340px',
+              backgroundColor: '#1D263C', boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', zIndex: 1000,
+              overflow: 'hidden', maxHeight: '420px', display: 'flex', flexDirection: 'column'
+            }}>
+              <div style={{ 
+                padding: '12px 16px', 
+                borderBottom: '1px solid rgba(255,255,255,0.08)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.03)'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: 'white' }}>Notificaciones</h3>
+                {unreadCount > 0 && (
+                  <button 
+                    onClick={handleMarkAllAsRead}
+                    style={{ background: 'none', border: 'none', color: '#46A2FD', cursor: 'pointer', fontSize: '0.7rem' }}
+                  >
+                    Marcar todas
+                  </button>
+                )}
+              </div>
+              
+              <div style={{ overflowY: 'auto', maxHeight: '350px' }}>
+                {isLoadingNotifications ? (
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Cargando...</div>
+                ) : notifications.length === 0 ? (
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+                    <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>🔔</span>
+                    No hay notificaciones
+                  </div>
+                ) : (
+                  notifications.map(notif => {
+                    let icon = '📢';
+                    if (notif.type === 'NEW_FILE_SHARED') icon = '📤';
+                    else if (notif.type === 'FILE_VIEWED') icon = '👁️';
+                    else if (notif.type === 'FILE_DOWNLOADED') icon = '⬇️';
+                    else if (notif.type === 'FILE_EXPIRING') icon = '⚠️';
+                    
+                    return (
+                      <div 
+                        key={notif.id}
+                        onClick={() => {
+                          if (!notif.isRead) {
+                            handleMarkAsRead(notif.id);
+                          }
+                          
+                          // Como el backend devuelve la entidad anidada, la extraemos
+                          const shareData = notif.fileShare; 
+                          const targetShareId = shareData ? shareData.id : notif.fileShareId;
+
+                          if (targetShareId) {
+                            setShowNotifications(false);
+                            
+                            // Verificamos si la notificación es de algo que enviaste o recibiste
+                            // Dependiendo del tipo de notificación, lo mandamos a recibidos o enviados
+                            const isSentByMe = notif.type === 'FILE_DOWNLOADED' || notif.type === 'FILE_VIEWED';
+                            const panelType = isSentByMe ? 'sent' : 'shared';
+                            
+                            navigate('/dashboard', {
+                              state: {
+                                selectedFile: {
+                                  type: panelType, // 'shared' (recibidos) o 'sent' (enviados)
+                                  shareId: targetShareId,
+                                  fileName: shareData?.file?.fileName || shareData?.fileName || 'Archivo',
+                                  fileType: shareData?.file?.fileType || shareData?.fileType || '',
+                                  fileSize: shareData?.file?.fileSize || shareData?.fileSize || 0,
+                                  securityLevel: shareData?.securityLevel || 'PUBLIC',
+                                  isPersonal: false
+                                }
+                              }
+                            });
+                          }
+                        }}
+                        style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          backgroundColor: notif.isRead ? 'transparent' : 'rgba(70, 162, 253, 0.1)',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = notif.isRead ? 'transparent' : 'rgba(70, 162, 253, 0.1)'}
+                      >
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'white', lineHeight: '1.4' }}>
+                              {notif.message}
+                            </p>
+                            <small style={{ fontSize: '0.65rem', color: '#888', display: 'block', marginTop: '4px' }}>
+                              {formatNotificationTime(notif.cratedAt || notif.createdAt)}
+                            </small>
+                          </div>
+                          {!notif.isRead && (
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#46A2FD', alignSelf: 'center' }} />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
         </div>

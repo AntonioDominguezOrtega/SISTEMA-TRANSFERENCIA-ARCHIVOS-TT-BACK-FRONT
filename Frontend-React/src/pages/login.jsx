@@ -263,12 +263,11 @@ export default function Login() {
 
                 <input type="text" placeholder="Nombre de Usuario" value={regUsername} onChange={(e) => setRegUsername(e.target.value)} required />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input type="email" placeholder="Correo Principal" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
-                  <input type="email" placeholder="Correo Extra (opcional)" value={regEmailRecuperacion} onChange={(e) => setRegEmailRecuperacion(e.target.value)} />
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <input type="email" placeholder="Correo Electrónico" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
                 </div>
 
-                <input type="tel" placeholder="Teléfono Celular (+521234567890)" value={regTel} onChange={(e) => setRegTel(e.target.value)} required />
+                <input type="tel" placeholder="Teléfono Celular" value={regTel} onChange={(e) => setRegTel(e.target.value)} required />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <input type="password" placeholder="Contraseña" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required />
@@ -283,7 +282,7 @@ export default function Login() {
                 </div>
 
                 {formMessage && isRegistering && (
-                  <p style={{ color: '#ff4d4f', fontWeight: '600', marginBottom: '10px', fontSize: '0.85rem', textAlign: 'center' }}>
+                  <p style={{ color: isSuccess ? '#52c41a' : '#ff4d4f', fontWeight: '600', marginBottom: '10px', fontSize: '0.85rem', textAlign: 'center' }}>
                     {formMessage}
                   </p>
                 )}

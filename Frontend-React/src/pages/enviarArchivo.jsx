@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
-import fileShareService from '../services/fileShareService';
+import FileSelectorModal from '../components/FileSelectorModal';
+
+// Servicios Reales
+import profileService from '../services/configService';
+import profileService from '../services/profileService';
+import searchService from '../services/searchService';
 
 // React Icons
 import { 
@@ -13,6 +18,7 @@ import {
 
 export default function EnviarArchivo() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // ========== ESTADOS DEL FORMULARIO ==========
   const [files, setFiles] = useState([]);
@@ -53,10 +59,124 @@ export default function EnviarArchivo() {
     { value: 'MONTH_1', label: '1 mes' }
   ];
 
-  const handleAgregarDestinatario = (e) => {
-    e.preventDefault();
-    if (!inputDestinatario.trim()) return;
-    if (destinatarios.includes(inputDestinatario.trim())) {
+  // ============================================================
+  // 1. CARGAR MIS CONTACTOS
+  // ============================================================
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const response = await profileService.getMyContacts();
+        const contactsList = response.data.contacts || response.data || [];
+        setMisContactos(contactsList);
+
+        // --- LÓGICA PARA LEER LA URL Y PRE-SELECCIONAR CONTACTO ---
+        const searchParams = new URLSearchParams(location.search);
+        const toId = searchParams.get('to');
+
+        if (toId && contactsList.length > 0) {
+          // Buscamos el contacto que coincida con el ID (userId, contactId o id)
+          const contactToAdd = contactsList.find(c => 
+            String(c.userId) === String(toId) || 
+            String(c.id) === String(toId) || 
+            String(c.contactId) === String(toId)
+          );
+          
+          if (contactToAdd) {
+            const identifier = contactToAdd.username || contactToAdd.email;
+            const type = contactToAdd.username ? 'USERNAME' : 'EMAIL';
+            const label = `${contactToAdd.nombre} ${contactToAdd.apellido || ''}`.trim();
+
+            // Usamos una función para actualizar el estado y evitar duplicados
+            // en caso de que el componente se renderice dos veces.
+            setDestinatarios(prevDestinatarios => {
+              if (prevDestinatarios.some(d => d.identifier === identifier)) {
+                return prevDestinatarios; // Si ya está, no lo duplica
+              }
+              return [...prevDestinatarios, {
+                id: contactToAdd.userId || contactToAdd.id,
+                identifier,
+                type,
+                label,
+                nombre: contactToAdd.nombre,
+                apellido: contactToAdd.apellido,
+                username: contactToAdd.username,
+                email: contactToAdd.email,
+                profilePictureUrl: contactToAdd.profilePictureUrl
+              }];
+            });
+          }
+        }
+        // ----------------------------------------------------------
+
+      } catch (err) {
+        console.error("Error al cargar mis contactos", err);
+      }
+    };
+    loadContacts();
+  }, [location.search]); // <--- Asegúrate de que location.search esté en el arreglo de dependencias
+
+  // ============================================================
+  // 2. BÚSQUEDA GLOBAL DE USUARIOS
+  // ============================================================
+  useEffect(() => {
+    const query = inputBusquedaGlobal.trim();
+    if (query.length >= 2) {
+      setBuscandoGlobal(true);
+      const delay = setTimeout(async () => {
+        try {
+          const response = await profileService.searchUsersByAny(query);
+          setResultadosFiltradosGlobal(response.results || []);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setBuscandoGlobal(false);
+        }
+      }, 500);
+      return () => clearTimeout(delay);
+    } else {
+      setResultadosFiltradosGlobal([]);
+    }
+  }, [inputBusquedaGlobal]);
+
+  // ============================================================
+  // MANEJADORES DE DESTINATARIOS
+  // ============================================================
+  const agregarDestinatario = (usuario) => {
+    const identifier = usuario.username || usuario.email;
+    const type = usuario.username ? 'USERNAME' : 'EMAIL';
+    const label = `${usuario.nombre} ${usuario.apellido || ''}`.trim();
+
+    if (destinatarios.some(d => d.identifier === identifier)) {
+      setError(`${label} ya está en la lista.`);
+      return;
+    }
+
+    setDestinatarios([...destinatarios, { 
+      id: usuario.id,
+      identifier, 
+      type, 
+      label,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      username: usuario.username,
+      email: usuario.email,
+      profilePictureUrl: usuario.profilePictureUrl
+    }]);
+    setBusquedaContactos('');
+    setError(null);
+  };
+
+  const agregarDestinatarioManual = (identifier) => {
+    if (!identifier.trim()) return;
+    
+    let type = 'USERNAME';
+    if (identifier.includes('@') && identifier.includes('.')) {
+      type = 'EMAIL';
+    } else if (/^[\+\d\s\-\(\)]{8,}$/.test(identifier) && /\d/.test(identifier)) {
+      type = 'PHONE';
+    }
+    
+    if (destinatarios.some(d => d.identifier === identifier)) {
       setError('Este destinatario ya fue agregado');
       return;
     }
@@ -446,12 +566,16 @@ export default function EnviarArchivo() {
             </div>
           )}
 
-          {/* 8. ACCESO */}
-          <div style={{ marginBottom: '25px' }}>
-            <label style={{ color: 'white', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Nivel de acceso *</label>
-            <div style={{ display: 'flex', gap: '15px' }}>
-              <button type="button" onClick={() => setAccessLevel('DOWNLOAD')} style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', backgroundColor: accessLevel === 'DOWNLOAD' ? 'rgba(82, 196, 26, 0.15)' : 'var(--color-dark)', color: accessLevel === 'DOWNLOAD' ? '#52c41a' : 'var(--color-text-medium)', border: accessLevel === 'DOWNLOAD' ? '1px solid #52c41a' : '1px solid rgba(255,255,255,0.08)' }}><FaDownload /> Permitir Descarga</button>
-              <button type="button" onClick={() => setAccessLevel('READ_ONLY')} style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', backgroundColor: accessLevel === 'READ_ONLY' ? 'rgba(250, 173, 20, 0.15)' : 'var(--color-dark)', color: accessLevel === 'READ_ONLY' ? '#faad14' : 'var(--color-text-medium)', border: accessLevel === 'READ_ONLY' ? '1px solid #faad14' : '1px solid rgba(255,255,255,0.08)' }}><FaEye /> Solo Vista</button>
+          {/* 8. NOTIFICACIONES */}
+          <div style={{ marginBottom: '30px', padding: '15px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+            <label style={{ color: 'white', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Notificaciones</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
+                <input type="checkbox" checked={notifyOnView} onChange={(e) => setNotifyOnView(e.target.checked)} /> Notificar cuando abran el archivo
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
+                <input type="checkbox" checked={notifyOnDownload} onChange={(e) => setNotifyOnDownload(e.target.checked)} /> Notificar cuando descarguen
+              </label>
             </div>
           </div>
 

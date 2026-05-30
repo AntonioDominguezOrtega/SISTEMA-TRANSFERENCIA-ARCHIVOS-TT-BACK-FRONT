@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
-
+import javax.crypto.SecretKey;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -321,12 +321,14 @@ public class FileShareService {
     }
 
     @Transactional
-    public String downloadFile(String shareId) {
+    public byte[] downloadFile(String shareId) {
         User currentUser = getCurrentUser();
         FileShare share = fileShareRepository.findByIdAndSharedWith(shareId, currentUser)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
         validateFileAcces(share);
+
+        validateFileAccess(share, currentUser);
 
         // Regla de Negocio: Validar que el remitente le dio permiso de descarga
         if (share.getAccessLevel() != AccessLevel.DOWNLOAD) {

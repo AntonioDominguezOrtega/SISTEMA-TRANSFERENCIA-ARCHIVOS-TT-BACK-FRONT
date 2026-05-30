@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
 import dashboardService from '../services/dashboardService';
@@ -80,6 +80,7 @@ const formatFullDate = (dateStr) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Estados
   const [loading, setLoading] = useState(true);
@@ -110,8 +111,34 @@ export default function Dashboard() {
   const [password, setPassword] = useState('');
   const [desbloqueando, setDesbloqueando] = useState(false);
   const [solicitandoToken, setSolicitandoToken] = useState(false);
+  
+  // ========== ESTADO VISUALIZADOR Y MENSAJES ==========
+  const [viewerFile, setViewerFile] = useState(null);
+  const [panelMessage, setPanelMessage] = useState({ type: null, text: null });
 
-  // Cargar usuario
+  useEffect(() => {
+    if (panelMessage.text) {
+      const timer = setTimeout(() => setPanelMessage({ type: null, text: null }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [panelMessage]);
+
+  // ========== CAPTURAR BÚSQUEDA DEL HEADER ==========
+  useEffect(() => {
+    if (location.state && location.state.selectedFile) {
+      const file = location.state.selectedFile;
+      
+      // Limpiamos el estado del historial para prevenir que se reabra al refrescar con F5
+      window.history.replaceState({}, document.title);
+
+      // Abrimos el panel lateral respetando la pestaña y carpeta actual del usuario
+      setElementoDetalle({
+        ...file,
+        tipo: file.isPersonal ? 'personal' : 'recibido'
+      });
+    }
+  }, [location.state]);
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -1041,7 +1068,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <Footer />
+      </main>
     </PrivateLayout>
   );
 }

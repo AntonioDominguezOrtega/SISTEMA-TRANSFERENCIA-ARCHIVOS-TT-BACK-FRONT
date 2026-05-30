@@ -110,6 +110,18 @@ export default function TerminosCondiciones() {
                 locales generadas durante el proceso de cifrado, ya que estas son necesarias para el acceso final al documento.
               </p>
 
+              <h3>6. Legislación Aplicable y Jurisdicción</h3>
+              <p>
+                Estos términos se regirán por las leyes mexicanas y cualquier controversia derivada del uso de la plataforma será
+                sometida a los tribunales competentes de la Ciudad de México, salvo disposición legal contraria.
+              </p>
+
+              <h3>7. Contacto</h3>
+              <p>
+                Para cualquier duda o solicitud relacionada con estos Términos y Condiciones y el Aviso de Privacidad,
+                puede escribir al correo electrónico oficial del proyecto o utilizar el formulario de contacto disponible en la plataforma.
+              </p>
+
               <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>
                   <strong>Aviso:</strong> Este documento cumple con los lineamientos de privacidad y protección de datos 

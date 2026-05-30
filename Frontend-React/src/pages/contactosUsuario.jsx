@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
-import profileService from '../services/profileService'
+import profileService from '../services/configService';
 
 export default function ContactosUsuario() {
   const navigate = useNavigate();
