@@ -156,8 +156,7 @@ export default function RegistroUsuario() {
       <main className="auth-page" style={{ paddingTop: '140px', paddingBottom: '60px', backgroundColor: 'var(--color-dark)' }}>
         <section className="section login-section" style={{ padding: '20px 0' }}>
           <div className="container auth-container">
-            <div className="auth-card" style={{ backgroundColor: 'var(--color-primary)', border: '1px solid rgba(255,255,255,0.05)', padding: '40px', borderRadius: '16px', maxWidth: '600px', margin: '0 auto' }}>
-              
+            <div className="auth-card" style={{ backgroundColor: 'var(--color-primary)', border: '1px solid rgba(255,255,255,0.05)', padding: 'clamp(16px, 4%, 40px)', borderRadius: '16px', maxWidth: '600px', width: '100%', margin: '0 auto' }}>
               <div className="auth-header" style={{ marginBottom: '25px' }}>
                 <span className="section-badge">Registro Seguro Capara</span>
                 <h2 style={{ color: 'var(--color-white)', fontSize: '2rem', marginTop: '10px' }}>Crear cuenta</h2>

@@ -67,7 +67,7 @@ export default function DetallesModal({ elemento, onClose }) {
   return (
     <div 
       style={{
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
         backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, // Para que aparezca por encima de TODO
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         backdropFilter: 'blur(3px)' // Efecto visual moderno
@@ -141,7 +141,7 @@ export default function DetallesModal({ elemento, onClose }) {
       {showPermissionsDialog && (
         <div 
           style={{
-            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
             backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(3px)'

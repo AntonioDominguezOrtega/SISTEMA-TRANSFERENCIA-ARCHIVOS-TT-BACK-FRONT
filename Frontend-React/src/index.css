@@ -243,13 +243,17 @@ main {
   }
 
   .notifications-dropdown {
-    width: min(92vw, 320px);
+    width: min(92%, 320px);
     right: -10px;
   }
 
   .user-dropdown {
     width: 180px;
     right: -5px;
+  }
+  .responsive-grid-2,
+  .responsive-grid-3 {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -414,13 +418,17 @@ main {
    7. LAYOUT PRIVADO Y SIDEBAR 
    ========================================= */
 .dashboard-layout { display: block; min-height: calc(100vh - 82px); }
-.dashboard-main { padding: 32px; background-color: var(--color-dark); min-height: 80vh; }
+.dashboard-main {
+  width: 100%;
+  padding: clamp(12px, 2%, 32px);
+}
 
-.page-content, .auth-page, .page-section { width: min(1200px, 100%); margin: 0 auto; padding: 0 18px; }
+.page-content, .page-section, .auth-page { width: 100%; max-width: 1400px; margin-inline: auto; padding-inline: clamp(12px, 2%, 32px);
+}
 .page-content { max-width: 1200px; }
 .auth-page { padding-top: 140px; padding-bottom: 60px; }
-.auth-card, .modal-card, .details-modal, .share-modal, .global-search-modal, .modal-dialog, .modal-dialog-wide { width: min(96vw, 520px); max-width: 96vw; }
-.modal-dialog-wide { width: min(96vw, 720px); }
+.auth-card, .modal-card, .details-modal, .share-modal, .global-search-modal, .modal-dialog, .modal-dialog-wide { width: min(96%, 520px); max-width: 96%; }
+.modal-dialog-wide { width: min(96%, 720px); }
 .modal-body { padding: 24px; }
 .responsive-grid { display: grid; gap: 20px; grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .responsive-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -978,7 +986,7 @@ select.form-control-modern {
     width: 100%;
   }
   .sidebar {
-    width: min(100vw, 280px);
+    width: min(100%, 280px);
   }
   .sidebar.is-open {
     transform: translateX(0) !important;
@@ -990,8 +998,8 @@ select.form-control-modern {
   .global-search-modal,
   .modal-dialog,
   .modal-dialog-wide {
-    width: min(96vw, 520px) !important;
-    max-width: 96vw !important;
+    width: min(96%, 520px) !important;
+    max-width: 96% !important;
     margin: 0 12px;
   }
   .share-input-group {
@@ -1023,7 +1031,7 @@ select.form-control-modern {
     grid-template-columns: 1fr !important;
   }
   [style*="width: 650px"] {
-    width: min(96vw, 650px) !important;
+    width: min(96%, 650px) !important;
   }
   [style*="height: 550px"] {
     height: auto !important;
