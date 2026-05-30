@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import Footer from '../components/Footer'
+import authService from '../services/authService'
 
 export default function RegistroUsuario() {
   const navigate = useNavigate();
@@ -12,7 +13,6 @@ export default function RegistroUsuario() {
     apellidos: '',
     nombreUsuario: '', 
     email: '',
-    emailRecuperacion: '', 
     tel: '',
     password: '',
     confirmPassword: ''
@@ -23,56 +23,128 @@ export default function RegistroUsuario() {
   const [tokenInput, setTokenInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
-  const [passwordsMatch, setPasswordsMatch] = useState(null); // null = no validado, true = coinciden, false = no coinciden
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [formMessage, setFormMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleChange = (e) => {
-    const updatedFormData = { ...formData, [e.target.id]: e.target.value };
-    setFormData(updatedFormData);
-
-    // Validar contraseñas en tiempo real
-    if (e.target.id === 'password' || e.target.id === 'confirmPassword') {
-      const newPassword = e.target.id === 'password' ? e.target.value : updatedFormData.password;
-      const newConfirmPassword = e.target.id === 'confirmPassword' ? e.target.value : updatedFormData.confirmPassword;
-      
-      if (newPassword && newConfirmPassword) {
-        setPasswordsMatch(newPassword === newConfirmPassword);
-      } else {
-        setPasswordsMatch(null);
+  const getErrorMessage = (error, fallback = 'Ocurrió un error.') => {
+    if (!error) return fallback;
+    const data = error.response?.data;
+    if (data) {
+      if (typeof data.error === 'string') return data.error;
+      if (typeof data.Error === 'string') return data.Error;
+      if (typeof data.message === 'string') return data.message;
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        return data.errors.map((item) => item.message || item).join(' - ');
       }
     }
+    return error.message || fallback;
   };
 
-  const handleRegisterClick = (e) => {
+  const validatePassword = (password) => {
+    const errors = [];
+    if (password.length < 8) {
+      errors.push('La contraseña debe tener más de 8 caracteres.');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Debe contener al menos una letra mayúscula.');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('Debe contener al menos un número.');
+    }
+    return errors;
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleRegisterClick = async (e) => {
     e.preventDefault();
-    
-    // Validación de contraseñas
-    if (!passwordsMatch) {
-      alert("Las contraseñas no coinciden.");
+    setFormMessage('');
+    setIsSuccess(false);
+
+    const passwordErrors = validatePassword(formData.password);
+    if (passwordErrors.length > 0) {
+      setFormMessage(passwordErrors.join(' '));
+      setIsSuccess(false);
       return;
     }
 
-    // Doble verificación por si se salta el atributo html required
+    if (formData.password !== formData.confirmPassword) {
+      setFormMessage('Las contraseñas no coinciden.');
+      setIsSuccess(false);
+      return;
+    }
+
     if (!aceptaTerminos) {
-      alert("Debes aceptar los Términos y Condiciones para continuar.");
+      setFormMessage('Debes aceptar los Términos y Condiciones para continuar.');
+      setIsSuccess(false);
       return;
     }
 
-    // Simulación de envío de tokens (Backend disparando servicios de Azure)
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setFormMessage('Creando cuenta...');
+
+    try {
+      const userData = {
+        nombre: formData.nombre,
+        apellidos: formData.apellidos,
+        username: formData.nombreUsuario,
+        email: formData.email,
+        tel: formData.tel,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      };
+
+      await authService.register(userData);
+      setRegisteredEmail(formData.email);
       setShowTokenModal(true);
-    }, 1500);
+      setFormMessage('');
+      setIsSuccess(true);
+    } catch (error) {
+      setFormMessage(getErrorMessage(error, 'Error al registrar usuario'));
+      setIsSuccess(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyToken = (e) => {
+  const handleVerifyToken = async (e) => {
     e.preventDefault();
-    // Simulación de validación (Token de prueba: 123456)
-    if (tokenInput === "123456") {
-      alert("Verificación exitosa. Usuario registrado correctamente.");
+    setFormMessage('Validando código...');
+    setIsLoading(true);
+
+    try {
+      await authService.verify(registeredEmail, tokenInput);
+      setFormMessage('Verificación exitosa. Usuario registrado correctamente.');
+      setIsSuccess(true);
+      setShowTokenModal(false);
       navigate('/login');
-    } else {
-      alert("Token incorrecto. Revisa tus medios de contacto.");
+    } catch (error) {
+      const errorMsg = getErrorMessage(error, 'Token incorrecto. Revisa tus medios de contacto.');
+      setFormMessage(errorMsg);
+      setIsSuccess(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    setFormMessage('Reenviando código...');
+
+    try {
+      await authService.resendCode(registeredEmail || formData.email);
+      setFormMessage('Código reenviado. Revisa tu correo y SMS.');
+      setIsSuccess(true);
+    } catch (error) {
+      setFormMessage(getErrorMessage(error, 'Error al reenviar el código.'));
+      setIsSuccess(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -97,7 +169,7 @@ export default function RegistroUsuario() {
               <form className="auth-form" onSubmit={handleRegisterClick}>
                 
                 {/* 🌟 SECCIÓN MODIFICADA: NOMBRE Y APELLIDOS EN GRID DE 2 COLUMNAS */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                <div className="responsive-grid responsive-grid-2" style={{ marginBottom: '1.5rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" htmlFor="nombre">Nombre(s)</label>
                     <div className="input-wrapper">
@@ -108,6 +180,7 @@ export default function RegistroUsuario() {
                         className="form-control-modern" 
                         placeholder="Ej. Antonio" 
                         required 
+                        value={formData.nombre}
                         onChange={handleChange} 
                       />
                     </div>
@@ -123,6 +196,7 @@ export default function RegistroUsuario() {
                         className="form-control-modern" 
                         placeholder="Ej. Domínguez Ortega" 
                         required 
+                        value={formData.apellidos}
                         onChange={handleChange} 
                       />
                     </div>
@@ -134,16 +208,16 @@ export default function RegistroUsuario() {
                   <label className="form-label" htmlFor="nombreUsuario">Nombre de Usuario</label>
                   <div className="input-wrapper">
                     <span className="input-icon">🆔</span>
-                    <input type="text" id="nombreUsuario" className="form-control-modern" placeholder="Ej. antoni_dominguez" required onChange={handleChange} />
+                    <input type="text" id="nombreUsuario" className="form-control-modern" placeholder="Ej. antoni_dominguez" required value={formData.nombreUsuario} onChange={handleChange} />
                   </div>
                   <small className="form-help" style={{ color: 'var(--color-text-medium)' }}>Este es el único dato que podrás cambiar en configuración.</small>
                 </div>
 
                 {/* Correos */}
-                <div style={{ display: 'grid', gap: '1.5rem' }}>
+                <div className="responsive-grid" style={{ gap: '1.5rem' }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="email">Correo</label>
-                    <input type="email" id="email" className="form-control-modern" placeholder="usuario@ipn.mx" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
+                    <label className="form-label" htmlFor="email">Correo Principal</label>
+                    <input type="email" id="email" className="form-control-modern" placeholder="usuario@ipn.mx" required value={formData.email} onChange={handleChange} style={{ paddingLeft: '15px' }} />
                   </div>
                 </div>
 
@@ -152,47 +226,28 @@ export default function RegistroUsuario() {
                   <label className="form-label" htmlFor="tel">Teléfono Celular</label>
                   <div className="input-wrapper">
                     <span className="input-icon">📱</span>
-                    <input type="tel" id="tel" className="form-control-modern" placeholder="55 1234 5678" required onChange={handleChange} />
+                    <input type="tel" id="tel" className="form-control-modern" placeholder="55 1234 5678" required value={formData.tel} onChange={handleChange} />
                   </div>
                 </div>
 
                 {/* Contraseñas en Grid para compactar espacio */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                  <div className="form-group">
+                <div className="responsive-grid responsive-grid-2">
+                  <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="password">Contraseña</label>
-                    <input type="password" id="password" className="form-control-modern" placeholder="••••••••" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
+                    <input type={showPassword ? 'text' : 'password'} id="password" className="form-control-modern" placeholder="••••••••" required value={formData.password} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
+                    <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
                   </div>
 
-                  <div className="form-group">
+                  <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="confirmPassword">Confirmar Contraseña</label>
-                    <input type="password" id="confirmPassword" className="form-control-modern" placeholder="••••••••" required onChange={handleChange} style={{ paddingLeft: '15px' }} />
+                    <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" className="form-control-modern" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
+                    <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                      {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
                   </div>
                 </div>
-
-                {/* Validación de contraseñas en tiempo real */}
-                {passwordsMatch !== null && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    marginBottom: '1.5rem',
-                    backgroundColor: passwordsMatch ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    border: `1px solid ${passwordsMatch ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-                  }}>
-                    <span style={{ fontSize: '1.1rem' }}>
-                      {passwordsMatch ? '✓' : '✕'}
-                    </span>
-                    <span style={{
-                      fontSize: '0.9rem',
-                      fontWeight: '500',
-                      color: passwordsMatch ? '#22c55e' : '#ef4444'
-                    }}>
-                      {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
-                    </span>
-                  </div>
-                )}
 
                 {/* 🌟 SECCIÓN TRASLADADA: TÉRMINOS Y CONDICIONES (Ahora antes de enviar datos) */}
                 <div className="form-terms" style={{ 
@@ -221,6 +276,12 @@ export default function RegistroUsuario() {
                     He leído y acepto los <Link to="/terminos-condiciones" style={{ color: 'var(--color-accent)', fontWeight: 'bold', textDecoration: 'underline' }}>Términos y Condiciones</Link>, así como el Aviso de Privacidad para el manejo seguro de mis datos y archivos.
                   </label>
                 </div>
+
+                {formMessage && (
+                  <p style={{ color: isSuccess ? '#52c41a' : '#ff4d4f', fontWeight: 600, marginBottom: '12px', fontSize: '0.95rem', textAlign: 'center' }}>
+                    {formMessage}
+                  </p>
+                )}
 
                 <button type="submit" className="btn btn-primary" disabled={isLoading} style={{ width: '100%', marginTop: '0.5rem' }}>
                   {isLoading ? 'Generando Tokens...' : 'Registrarse'}
@@ -265,15 +326,31 @@ export default function RegistroUsuario() {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                Validar y Registrar Alta
+              {formMessage && (
+                <p style={{ color: isSuccess ? '#52c41a' : '#ff4d4f', fontWeight: 600, marginBottom: '12px', fontSize: '0.95rem', textAlign: 'center' }}>
+                  {formMessage}
+                </p>
+              )}
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isLoading}>
+                {isLoading ? 'Verificando...' : 'Validar y Registrar Alta'}
               </button>
               
               <button 
                 type="button" 
                 className="btn-link" 
-                onClick={() => setShowTokenModal(false)} 
+                onClick={handleResendCode}
+                disabled={isLoading}
                 style={{ marginTop: '20px', background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem' }}
+              >
+                Reenviar código
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-link" 
+                onClick={() => setShowTokenModal(false)} 
+                style={{ marginTop: '10px', background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem' }}
               >
                 ← Regresar a corregir datos
               </button>

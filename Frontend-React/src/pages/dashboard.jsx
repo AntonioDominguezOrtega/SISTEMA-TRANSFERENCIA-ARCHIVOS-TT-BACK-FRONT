@@ -619,7 +619,7 @@ export default function Dashboard() {
                 <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-accent)' }}>
                   <FaFolderPlus /> Crear Carpeta
                 </button>
-                <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <FaUpload /> Subir Archivo
                 </button>
                 <button onClick={() => navigate('/enviar-archivo')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -712,7 +712,7 @@ export default function Dashboard() {
                       <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-medium)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '12px' }}>
                         <FaFolderOpen style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }} />
                         <p style={{ marginBottom: '20px' }}>Esta carpeta está vacía</p>
-                        <button onClick={() => navigate('/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
+                        <button onClick={() => navigate(currentFolderId ? `/subir-archivo?carpeta=${currentFolderId}` : '/subir-archivo')} className="btn btn-secondary" style={{ marginRight: '10px', border: '1px solid rgba(255,255,255,0.1)' }}><FaUpload /> Subir</button>
                         <button onClick={() => setShowModalCarpeta(true)} className="btn btn-secondary" style={{ border: '1px solid rgba(255,255,255,0.1)' }}><FaFolderPlus /> Crear carpeta</button>
                       </div>
                     )}

@@ -6,7 +6,6 @@ import FileSelectorModal from '../components/FileSelectorModal';
 
 // Servicios Reales
 import profileService from '../services/configService';
-import profileService from '../services/profileService';
 import searchService from '../services/searchService';
 
 // React Icons
@@ -143,8 +142,8 @@ export default function EnviarArchivo() {
       setBuscandoGlobal(true);
       const delay = setTimeout(async () => {
         try {
-          const response = await profileService.searchUsersByAny(query);
-          setResultadosFiltradosGlobal(response.results || []);
+          const response = await profileService.searchGlobalUsers(query);
+          setResultadosFiltradosGlobal(response.data.results || []);
         } catch (err) {
           console.error(err);
         } finally {
@@ -403,7 +402,7 @@ export default function EnviarArchivo() {
 
   return (
     <PrivateLayout>
-      <main style={{ paddingTop: '110px', paddingBottom: '80px', color: 'white', maxWidth: '800px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
+      <main className="page-content" style={{ paddingTop: '110px', paddingBottom: '80px', color: 'white', maxWidth: '800px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
         
         <section style={{ marginBottom: '30px', textAlign: 'left' }}>
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0 }}>
@@ -591,7 +590,7 @@ export default function EnviarArchivo() {
           )}
 
           {/* 4. ASUNTO Y EXPIRACIÓN */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+          <div className="responsive-grid responsive-grid-2" style={{ marginBottom: '25px' }}>
             <div>
               <label style={{ color: 'white', fontWeight: '500', display: 'block', marginBottom: '8px' }}>Asunto (opcional)</label>
               <input type="text" placeholder="Ej. Documentos importantes" value={asunto} onChange={(e) => setAsunto(e.target.value)} style={{ width: '100%', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', outline: 'none' }} />
@@ -688,7 +687,7 @@ export default function EnviarArchivo() {
       {/* MODAL DIRECTORIO GLOBAL */}
       {showModalBusquedaGlobal && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(19, 25, 36, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }}>
-          <div style={{ width: '500px', padding: '2rem', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #0a3fff', boxShadow: '0 0 20px rgba(10, 63, 255, 0.5)' }}>
+          <div className="global-search-modal" style={{ padding: '2rem', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #0a3fff', boxShadow: '0 0 20px rgba(10, 63, 255, 0.5)' }}>
             <h2 style={{ textAlign: 'center', marginBottom: '10px', color: 'white' }}>Directorio Global</h2>
             <p style={{ textAlign: 'center', color: '#888', marginBottom: '20px' }}>Busca y agrega usuarios de la plataforma</p>
             

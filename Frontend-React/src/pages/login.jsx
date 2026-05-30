@@ -10,6 +10,19 @@ const isValidIdentifier = (val) => {
   return emailRegex.test(val.trim()) || userRegex.test(val.trim());
 };
 const isValidPassword = (password) => password.trim().length >= 6;
+const getRegistrationPasswordErrors = (password) => {
+  const errors = [];
+  if (password.length < 8) {
+    errors.push('La contraseña debe tener más de 8 caracteres.');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Debe contener al menos una letra mayúscula.');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Debe contener al menos un número.');
+  }
+  return errors;
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -40,6 +53,23 @@ export default function Login() {
   const [formMessage, setFormMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+
+  const getErrorMessage = (error, fallback = 'Ocurrió un error.') => {
+    if (!error) return fallback;
+    const data = error.response?.data;
+    if (data) {
+      if (typeof data.error === 'string') return data.error;
+      if (typeof data.Error === 'string') return data.Error;
+      if (typeof data.message === 'string') return data.message;
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        return data.errors.map((item) => item.message || item).join(' - ');
+      }
+    }
+    return error.message || fallback;
+  };
 
   // ============================================================
   // LOGIN CON BACKEND REAL
@@ -73,8 +103,7 @@ export default function Login() {
 
       setTimeout(() => navigate('/dashboard'), 1000);
     } catch (error) {
-      const errorMsg = error.response?.data?.error || "Credenciales incorrectas";
-      setFormMessage(errorMsg);
+      setFormMessage(getErrorMessage(error, 'Credenciales incorrectas'));
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
@@ -87,12 +116,21 @@ export default function Login() {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     
+    const passwordErrors = getRegistrationPasswordErrors(regPassword);
+    if (passwordErrors.length > 0) {
+      setFormMessage(passwordErrors.join(' '));
+      setIsSuccess(false);
+      return;
+    }
+
     if (regPassword !== regConfirmPassword) {
-      alert("Las contraseñas no coinciden.");
+      setFormMessage("Las contraseñas no coinciden.");
+      setIsSuccess(false);
       return;
     }
     if (!aceptaTerminos) {
-      alert("Debes aceptar los Términos y Condiciones.");
+      setFormMessage("Debes aceptar los Términos y Condiciones.");
+      setIsSuccess(false);
       return;
     }
 
@@ -116,8 +154,7 @@ export default function Login() {
       setShowTokenModal(true);
       
     } catch (error) {
-      const errorMsg = error.response?.data?.Error || error.response?.data?.error || "Error al registrar usuario";
-      setFormMessage(errorMsg);
+      setFormMessage(getErrorMessage(error, 'Error al registrar usuario'));
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
@@ -133,7 +170,8 @@ export default function Login() {
     
     try {
       await authService.verify(registeredEmail, tokenInput);
-      alert("¡Verificación exitosa! Usuario registrado correctamente.");
+      setFormMessage('¡Verificación exitosa! Usuario registrado correctamente.');
+      setIsSuccess(true);
       setShowTokenModal(false);
       setIsRegistering(false);
       setRegNombre('');
@@ -145,7 +183,8 @@ export default function Login() {
       setRegConfirmPassword('');
       setTokenInput('');
     } catch (error) {
-      alert(error.response?.data?.error || "Token incorrecto. Revisa tu correo o teléfono.");
+      setFormMessage(getErrorMessage(error, 'Token incorrecto. Revisa tu correo o teléfono.'));
+      setIsSuccess(false);
     } finally {
       setIsLoading(false);
     }
@@ -158,9 +197,11 @@ export default function Login() {
     setIsLoading(true);
     try {
       await authService.resendCode(registeredEmail);
-      alert("Se ha reenviado un nuevo código a tu correo y teléfono.");
+      setFormMessage('Se ha reenviado un nuevo código a tu correo y teléfono.');
+      setIsSuccess(true);
     } catch (error) {
-      alert(error.response?.data?.error || "Error al reenviar el código.");
+      setFormMessage(getErrorMessage(error, 'Error al reenviar el código.'));
+      setIsSuccess(false);
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +230,7 @@ export default function Login() {
             </div>
 
             {/* CONTENEDOR DESLIZANTE */}
-            <div className="contenedor__login-register" style={{ height: '620px' }}>
+            <div className="contenedor__login-register" style={{ minHeight: '620px' }}>
               
               {/* FORMULARIO LOGIN */}
               <form 
@@ -215,15 +256,34 @@ export default function Login() {
                   {errorIdentificador && <p className="error-text-slide">{errorIdentificador}</p>}
                 </div>
 
-                <div className="form-group-slide">
+                <div className="form-group-slide" style={{ position: 'relative' }}>
                   <input 
-                    type="password" 
+                    type={showLoginPassword ? 'text' : 'password'} 
                     placeholder="Contraseña" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
                     required
+                    style={{ paddingRight: '46px' }}
                   />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowLoginPassword(prev => !prev)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--color-text-medium)',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontSize: '1rem'
+                    }}
+                  >
+                    {showLoginPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
                   {passwordError && <p className="error-text-slide">{passwordError}</p>}
                 </div>
 
@@ -256,22 +316,76 @@ export default function Login() {
               >
                 <h2 style={{ marginBottom: '15px' }}>Registrarse</h2>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="responsive-grid responsive-grid-2" style={{ gap: '10px' }}>
                   <input type="text" placeholder="Nombre(s)" value={regNombre} onChange={(e) => setRegNombre(e.target.value)} required />
                   <input type="text" placeholder="Apellidos" value={regApellidos} onChange={(e) => setRegApellidos(e.target.value)} required />
                 </div>
 
                 <input type="text" placeholder="Nombre de Usuario" value={regUsername} onChange={(e) => setRegUsername(e.target.value)} required />
 
-                <div style={{ display: 'grid', gap: '10px' }}>
+                <div className="responsive-grid" style={{ gap: '10px' }}>
                   <input type="email" placeholder="Correo Electrónico" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
                 </div>
 
                 <input type="tel" placeholder="Teléfono Celular" value={regTel} onChange={(e) => setRegTel(e.target.value)} required />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input type="password" placeholder="Contraseña" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required />
-                  <input type="password" placeholder="Confirmar" value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} required />
+                <div className="responsive-grid responsive-grid-2" style={{ gap: '10px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      placeholder="Contraseña"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                      style={{ width: '100%', paddingRight: '46px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(prev => !prev)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-medium)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        fontSize: '1rem'
+                      }}
+                    >
+                      {showRegPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showRegConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirmar"
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      required
+                      style={{ width: '100%', paddingRight: '46px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegConfirmPassword(prev => !prev)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-medium)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        fontSize: '1rem'
+                      }}
+                    >
+                      {showRegConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '5px 0 15px', textAlign: 'left' }}>
@@ -304,7 +418,7 @@ export default function Login() {
             <span style={{ fontSize: '3rem' }}>🛡️</span>
             <h2 style={{ margin: '1rem 0', color: 'var(--color-white)', fontWeight: '700' }}>Verificación Dual</h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-medium)', marginBottom: '1.5rem' }}>
-              Se ha enviado un código de verificación a <strong>{registeredEmail}</strong> y vía SMS a tu celular.
+              Se ha enviado un código de verificación a <strong>{registeredEmail}</strong>
             </p>
 
             <form onSubmit={handleVerifyToken}>
