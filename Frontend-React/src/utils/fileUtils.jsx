@@ -55,8 +55,8 @@ export const renderSecurityBadge = (securityLevel, isUnlocked, hasPassword) => {
     return <FaLock title="Protegido con contraseña - Requiere autenticación" style={{ color: '#faad14', marginRight: '8px', minWidth: '16px' }} />;
   }
   if (securityLevel === 'TOKEN_SMS') {
-    if (isUnlocked) return <FaUnlock title="Desbloqueado vía SMS (válido por 24h)" style={{ color: '#52c41a', marginRight: '8px', minWidth: '16px' }} />;
-    return <FaShieldAlt title="Requiere verificación SMS - Máxima seguridad" style={{ color: '#0a3fff', marginRight: '8px', minWidth: '16px' }} />;
+    if (isUnlocked) return <FaUnlock title="Desbloqueado vía correo electrónico (válido por 24h)" style={{ color: '#52c41a', marginRight: '8px', minWidth: '16px' }} />;
+    return <FaShieldAlt title="Requiere verificación por correo - Máxima seguridad" style={{ color: '#0a3fff', marginRight: '8px', minWidth: '16px' }} />;
   }
   return <FaUnlock title="Público" style={{ color: '#52c41a', marginRight: '8px', minWidth: '16px' }} />;
 };

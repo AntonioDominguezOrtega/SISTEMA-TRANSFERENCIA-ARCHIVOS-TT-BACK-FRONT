@@ -40,7 +40,7 @@ export default function RecuperacionContrasena() {
   const [userContact, setUserContact] = useState({ email: '', phone: '' });
 
   // ============================================================
-  // SOLICITAR TOKEN SMS (BACKEND REAL)
+  // SOLICITAR TOKEN EMAIL (BACKEND REAL)
   // ============================================================
   const handleSendToken = async (e) => {
     e.preventDefault();
@@ -60,7 +60,7 @@ export default function RecuperacionContrasena() {
       const response = await authService.requestPasswordReset(identificador.trim(), 'SMS');
       
       setUserContact(prev => ({ ...prev, email: identificador.trim() }));
-      setSuccessMessage(response.message || 'Se ha enviado un código de verificación a tu correo y teléfono.');
+      setSuccessMessage(response.message || 'Se ha enviado un código de verificación a tu correo electrónico.');
       setShowResetModal(true);
     } catch (err) {
       console.error('Error al solicitar recuperación:', err);
@@ -71,7 +71,7 @@ export default function RecuperacionContrasena() {
   };
 
   // ============================================================
-  // RESTABLECER CONTRASEÑA CON CÓDIGO SMS (BACKEND REAL)
+  // RESTABLECER CONTRASEÑA CON CÓDIGO EMAIL (BACKEND REAL)
   // ============================================================
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -120,7 +120,7 @@ export default function RecuperacionContrasena() {
   };
 
   // ============================================================
-  // REENVIAR CÓDIGO SMS
+  // REENVIAR CÓDIGO EMAIL
   // ============================================================
   const handleResendCode = async () => {
     setError('');
@@ -129,7 +129,7 @@ export default function RecuperacionContrasena() {
     
     try {
       const response = await authService.resendPasswordResetCode(identificador.trim(), 'SMS');
-      setSuccessMessage(response.message || 'Se ha reenviado un nuevo código a tu correo y teléfono.');
+      setSuccessMessage(response.message || 'Se ha reenviado un nuevo código a tu correo.');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al reenviar el código.');
     } finally {
@@ -170,7 +170,7 @@ export default function RecuperacionContrasena() {
                 <p style={{ color: 'var(--color-text-medium)', fontSize: '0.95rem', marginTop: '5px' }}>
                   {vieneDesdeConfiguracion 
                     ? 'Por seguridad, ingresa tu correo para confirmar tu identidad antes del cambio.' 
-                    : 'Ingresa tu correo registrado para recibir un código de seguridad por SMS y correo de respaldo.'
+                    : 'Ingresa tu correo registrado para recibir un código de seguridad .'
                   }
                 </p>
               </div>
@@ -221,7 +221,7 @@ export default function RecuperacionContrasena() {
                     />
                   </div>
                   <small style={{ color: 'var(--color-text-medium)', fontSize: '0.7rem', marginTop: '4px', display: 'block' }}>
-                    Recibirás un código de 6 dígitos por SMS y correo de respaldo.
+                    Recibirás un código de 6 dígitos por correo.
                   </small>
                 </div>
 
@@ -258,7 +258,7 @@ export default function RecuperacionContrasena() {
               <h2 style={{ marginTop: '1rem', color: 'white', fontWeight: '700' }}>Verificar Identidad</h2>
               
               <p style={{ fontSize: '0.92rem', color: 'var(--color-text-medium)', marginTop: '10px', lineHeight: '1.5' }}>
-                Se ha enviado un <strong style={{ color: 'white' }}>código de verificación de 6 dígitos</strong> al correo <strong style={{ color: 'white' }}>{enmascararEmail(userContact.email)}</strong> y vía SMS.
+                Se ha enviado un <strong style={{ color: 'white' }}>código de verificación de 6 dígitos</strong> al correo <strong style={{ color: 'white' }}>{enmascararEmail(userContact.email)}</strong>
               </p>
             </div>
 

@@ -42,7 +42,7 @@ export default function TerminosCondiciones() {
               <p>
                 Los datos personales descritos serán utilizados de manera estricta para cumplir con las siguientes finalidades primarias (esenciales para la prestación del servicio):
                 <ul style={{ marginLeft: '1.5rem', listStyleType: 'disc' }}>
-                  <li>Generar, procesar y enviar tokens de seguridad vía mensaje de texto (SMS) para validar la identidad del usuario durante los procesos de recuperación de cuenta o descarga de archivos.</li>
+                  <li>Generar, procesar y enviar tokens de seguridad vía correo electrónico para validar la identidad del usuario durante los procesos de recuperación de cuenta o descarga de archivos.</li>
                   <li>Alojar temporalmente los paquetes de datos cifrados en la infraestructura del sistema para viabilizar la transferencia entre el remitente y el destinatario legítimo.</li>
                   <li>Administrar y ejecutar los tiempos de expiración y autodestrucción de los archivos conforme a la configuración establecida por el usuario remitente.</li>
                 </ul>
@@ -60,7 +60,6 @@ export default function TerminosCondiciones() {
               <p>
                 Para la operación de la arquitectura en la nube, los datos previamente cifrados por el usuario se alojan de manera transitoria en la infraestructura de Microsoft Azure. Esta transferencia técnica se realiza bajo estrictas condiciones de seguridad
                 y con el único propósito de proveer almacenamiento temporal. El sistema purgará y eliminará de forma definitiva e irreversible cualquier archivo de los servidores de Azure una vez superado el tiempo de expiración configurado.
-                El número telefónico podrá ser procesado de forma temporal por proveedores externos homologados de servicios de mensajería exclusivamente para la entrega física del SMS con el token MFA.
               </p>
 
               <h3>6. Derechos de ARCO y Renovación del Consentimiento</h3>
@@ -92,9 +91,9 @@ export default function TerminosCondiciones() {
                 La plataforma no almacena las llaves de descifrado de forma persistente en texto plano, garantizando la confidencialidad.
               </p>
 
-              <h3>3. Autenticación por SMS (MFA)</h3>
+              <h3>3. Autenticación por Correo (MFA)</h3>
               <p>
-                Para la recuperación y descarga de archivos, el sistema requiere un número telefónico válido para el envío de 
+                Para la recuperación y descarga de archivos, el sistema requiere el correo electrónico válido para el envío de 
                 tokens de seguridad. Usted es responsable de la exactitud de los datos proporcionados para este fin.
               </p>
 

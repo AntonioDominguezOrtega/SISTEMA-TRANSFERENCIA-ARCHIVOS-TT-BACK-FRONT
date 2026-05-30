@@ -166,17 +166,20 @@ public class FileShareService {
         for (ShareExistingFileRequest.RecipientInfo recipient : request.getRecipients()) {
             User targetUser = findUserByIdentifier(recipient);
 
-            if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser)) {
-                continue;
-            }
+            // DESACTIVAR shares anteriores
+            log.info("🔄 Desactivando share anterior para {} con archivo {}",
+                    targetUser.getUsername(), file.getFileName());
 
-            // Llamamos al método renombrado para evitar la confusión del compilador
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), targetUser);
+
+            // Crear nuevo FileShare
             FileShare share = createShareFromExistingFile(file, currentUser, targetUser, request);
             FileShare savedShare = fileShareRepository.save(share);
             sendSharingNotifications(savedShare, request);
             logAccess(currentUser, file, savedShare, AccessAction.SHARE, true, null);
             responses.add(mapToResponse(savedShare));
         }
+
         return responses;
     }
 
@@ -1027,23 +1030,11 @@ public class FileShareService {
 
             log.info("✅ PDF descifrado exitosamente: {}", share.getFile().getFileName());
 
-            savePdfForDebug(decryptedBytes, share.getFile().getFileName());
             return decryptedBytes;
 
         } catch (Exception e) {
-            log.error("❌ Error al descifrar PDF: {}", e.getMessage());
+            log.error("Error al descifrar PDF: {}", e.getMessage());
             throw new RuntimeException("Error al preparar el archivo: " + e.getMessage());
-        }
-    }
-
-    // Método TEMPORAL para depuración - GUARDA EL PDF EN DISCO
-    private void savePdfForDebug(byte[] pdfBytes, String fileName) {
-        try {
-            java.nio.file.Path path = java.nio.file.Paths.get("./debug_" + fileName);
-            java.nio.file.Files.write(path, pdfBytes);
-            log.info("📁 PDF guardado en disco para depuración: {}", path.toAbsolutePath());
-        } catch (Exception e) {
-            log.error("Error guardando PDF de depuración: {}", e.getMessage());
         }
     }
 }

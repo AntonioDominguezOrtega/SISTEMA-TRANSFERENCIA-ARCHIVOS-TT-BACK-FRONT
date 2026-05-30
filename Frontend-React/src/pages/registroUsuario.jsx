@@ -138,7 +138,7 @@ export default function RegistroUsuario() {
 
     try {
       await authService.resendCode(registeredEmail || formData.email);
-      setFormMessage('Código reenviado. Revisa tu correo y SMS.');
+      setFormMessage('Código reenviado. Revisa tu correo.');
       setIsSuccess(true);
     } catch (error) {
       setFormMessage(getErrorMessage(error, 'Error al reenviar el código.'));
@@ -308,7 +308,7 @@ export default function RegistroUsuario() {
             <span style={{ fontSize: '3rem' }}>🛡️</span>
             <h2 style={{ margin: '1rem 0', color: 'var(--color-white)', fontWeight: '700' }}>Verificación Dual</h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-medium)', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-              Se ha enviado un código de seguridad a <strong>{formData.email}</strong> y vía <strong>SMS</strong> al número registrado.
+              Se ha enviado un código de seguridad a <strong>{formData.email}</strong>.
             </p>
 
             <form onSubmit={handleVerifyToken}>

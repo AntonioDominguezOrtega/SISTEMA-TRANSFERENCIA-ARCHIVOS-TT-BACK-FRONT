@@ -27,7 +27,7 @@
 ---
 
 ## 📝 Descripción del Proyecto
-Este proyecto es una plataforma web orientada a la **transferencia y almacenamiento seguro de archivos**. Utiliza cifrado de extremo a extremo, verificación en dos pasos (2FA) vía SMS y almacenamiento en la nube (Azure Blob Storage) para garantizar la integridad y confidencialidad de la información. El sistema está compuesto por una arquitectura Cliente-Servidor (React + Spring Boot).
+Este proyecto es una plataforma web orientada a la **transferencia y almacenamiento seguro de archivos**. Utiliza cifrado de extremo a extremo, verificación en dos pasos (2FA) vía correo electronico y almacenamiento en la nube (Azure Blob Storage) para garantizar la integridad y confidencialidad de la información. El sistema está compuesto por una arquitectura Cliente-Servidor (React + Spring Boot).
 
 ## ✨ Funciones y Secciones Principales
 
@@ -60,7 +60,6 @@ Este proyecto es una plataforma web orientada a la **transferencia y almacenamie
 **Infraestructura y Servicios Cloud:**
 - [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/) (Almacenamiento de archivos y fotos)
 - Base de Datos Relacional (MySQL / PostgreSQL)
-- [Twilio](https://www.twilio.com/) (Envío de tokens por SMS)
 
 ---
 

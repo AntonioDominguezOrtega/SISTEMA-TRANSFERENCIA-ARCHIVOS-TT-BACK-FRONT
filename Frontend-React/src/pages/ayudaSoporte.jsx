@@ -77,7 +77,7 @@ export default function AyudaSoporte() {
                 <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(82, 196, 26, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: '#52c41a', marginBottom: '15px' }}>
                   <FaSms />
                 </div>
-                <h3 style={{ fontSize: '1.15rem', color: 'white', fontWeight: '600', marginBottom: '10px' }}>Autenticación SMS</h3>
+                <h3 style={{ fontSize: '1.15rem', color: 'white', fontWeight: '600', marginBottom: '10px' }}>Autenticación por correo</h3>
                 <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
                   Configuración del servicio OTP dual de Azure para solicitudes de validación de identidad asíncronas.
                 </p>

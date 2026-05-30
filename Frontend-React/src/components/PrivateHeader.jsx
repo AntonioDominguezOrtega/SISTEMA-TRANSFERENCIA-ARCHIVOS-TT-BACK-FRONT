@@ -29,7 +29,7 @@ const getResultIcon = (item) => {
 // Badge de seguridad para resultados de búsqueda
 const getSecurityBadge = (securityLevel) => {
   if (securityLevel === 'PASSWORD') return <FaLock title="Protegido con contraseña" className="security-badge security-badge-password" />;
-  if (securityLevel === 'TOKEN_SMS') return <FaShieldAlt title="Verificación SMS" className="security-badge security-badge-token" />;
+  if (securityLevel === 'TOKEN_SMS') return <FaShieldAlt title="Verificación por correo" className="security-badge security-badge-token" />;
   return null;
 };
 

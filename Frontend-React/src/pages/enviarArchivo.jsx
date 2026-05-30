@@ -637,7 +637,7 @@ export default function EnviarArchivo() {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', border: security === 'TOKEN_SMS' ? '2px solid #0a3fff' : '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', cursor: 'pointer' }}>
                 <input type="radio" name="security" value="TOKEN_SMS" checked={security === 'TOKEN_SMS'} onChange={() => setSecurity('TOKEN_SMS')} />
-                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por SMS</strong><br /><small>Recibirá un código para desbloquearlo</small></div>
+                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por correo</strong><br /><small>Recibirá un código para desbloquearlo</small></div>
               </label>
             </div>
           </div>
@@ -651,19 +651,6 @@ export default function EnviarArchivo() {
               {confirmPassword && password === confirmPassword && password.length >= 8 && <span style={{ color: '#52c41a', fontSize: '0.75rem', marginTop: '5px' }}>✅ Coinciden</span>}
             </div>
           )}
-
-          {/* SMS */}
-          {security === 'TOKEN_SMS' && (
-            <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(82, 196, 26, 0.05)', borderLeft: '4px solid #52c41a', borderRadius: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <input type="checkbox" checked={useAccountPhone} onChange={(e) => setUseAccountPhone(e.target.checked)} /> Usar mi número registrado
-              </label>
-              {!useAccountPhone && (
-                <input type="tel" placeholder="+52 55 1234 5678" value={customPhoneNumber} onChange={(e) => setCustomPhoneNumber(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-              )}
-            </div>
-          )}
-
           {/* 8. NOTIFICACIONES */}
           <div style={{ marginBottom: '30px', padding: '15px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
             <label style={{ color: 'white', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Notificaciones</label>

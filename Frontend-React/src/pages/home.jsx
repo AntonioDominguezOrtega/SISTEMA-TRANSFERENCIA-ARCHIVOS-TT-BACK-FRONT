@@ -56,7 +56,7 @@ export default function Home() {
               </h1>
               
               <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '1.15rem', lineHeight: '1.6', marginBottom: '35px', maxWidth: '550px' }}>
-                Plataforma web de resguardo documental de alto nivel. Protege, organiza y comparte contratos y archivos confidenciales mediante cifrado avanzado y tokens SMS.
+                Plataforma web de resguardo documental de alto nivel. Protege, organiza y comparte contratos y archivos confidenciales mediante cifrado avanzado y tokens de verificación por correo.
               </p>
 
               <div className="hero-actions" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
@@ -107,7 +107,7 @@ export default function Home() {
               <div style={{ display: 'flex', gap: '15px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={{ fontSize: '1.5rem', color: '#0a3fff', marginTop: '3px' }}><FaUserLock /></div>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: '0 0 6px 0' }}>Autenticación SMS Dual</h3>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: '0 0 6px 0' }}>Autenticación por Correo</h3>
                   <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>Agrega un token de un solo uso.</p>
                 </div>
               </div>

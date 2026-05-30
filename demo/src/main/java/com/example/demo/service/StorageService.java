@@ -644,6 +644,7 @@ public class StorageService {
 
     /**
      * Compartir un archivo existente con otros usuarios
+     * Si ya existe un share activo, lo desactiva y crea uno nuevo con las nuevas credenciales
      */
     @Transactional
     public List<FileShareResponse> shareExistingFile(ShareExistingFileRequest request) {
@@ -677,13 +678,22 @@ public class StorageService {
         for (ShareExistingFileRequest.RecipientInfo recipient : request.getRecipients()) {
             User targetUser = findUserByIdentifier(recipient);
 
-            // Verificar si ya se compartió antes (evitar duplicados activos)
-            if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser)) {
-                log.warn("El archivo ya fue compartido con {} anteriormente", targetUser.getUsername());
-                continue;
-            }
+            // DESACTIVAR shares anteriores del mismo archivo con este usuario
+            log.info("🔄 Desactivando shares anteriores para usuario: {} con archivo: {}",
+                    targetUser.getUsername(), file.getFileName());
 
-            // Crear el nuevo FileShare
+            // Método 1: Usar consulta personalizada
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), targetUser);
+
+            // Método 2 (alternativa si el método de arriba no funciona):
+            // List<FileShare> existingShares = fileShareRepository
+            //         .findAllByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser);
+            // for (FileShare oldShare : existingShares) {
+            //     oldShare.setIsActive(false);
+            //     fileShareRepository.save(oldShare);
+            // }
+
+            // Crear el nuevo FileShare con las nuevas credenciales
             FileShare share = createShareFromExistingFile(file, currentUser, targetUser, request);
             FileShare savedShare = fileShareRepository.save(share);
 
@@ -692,20 +702,20 @@ public class StorageService {
 
             // Registrar en auditoría
             logAccess(currentUser, file, savedShare, AccessAction.SHARE, true,
-                    "Compartido con: " + targetUser.getEmail());
+                    "Compartido con: " + targetUser.getEmail() + " (nuevas credenciales)");
 
             responses.add(mapToFileShareResponse(savedShare));
         }
 
         // 4. Copia para sí mismo si lo solicitó
         if (request.getSendCopyToMyself() != null && request.getSendCopyToMyself()) {
-            // Verificar si ya existe un FileShare propio
-            if (!fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), currentUser)) {
-                FileShare selfShare = createShareFromExistingFile(file, currentUser, currentUser, request);
-                selfShare.setNotifyOnview(false);
-                selfShare.setNotifyOnDownload(false);
-                fileShareRepository.save(selfShare);
-            }
+            // Desactivar share anterior propio si existe
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), currentUser);
+
+            FileShare selfShare = createShareFromExistingFile(file, currentUser, currentUser, request);
+            selfShare.setNotifyOnview(false);
+            selfShare.setNotifyOnDownload(false);
+            fileShareRepository.save(selfShare);
         }
 
         return responses;
@@ -745,7 +755,7 @@ public class StorageService {
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
-        share.setMessage(request.getMessage());  // ← AGREGAR ESTA LÍNEA (si no existe)
+        share.setMessage(request.getMessage());
         share.setSharedAt(LocalDateTime.now());
         share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
@@ -799,12 +809,13 @@ public class StorageService {
      * Calcular fecha de expiración
      */
     private LocalDateTime calculateExpiration(ShareExistingFileRequest.ExpirationTime expirationTime) {
+        if (expirationTime == null) return LocalDateTime.now().plusDays(30);
         return switch (expirationTime) {
             case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
             case DAYS_7 -> LocalDateTime.now().plusDays(7);
             case MONTH_1 -> LocalDateTime.now().plusMonths(1);
-            case CUSTOM -> LocalDateTime.now().plusDays(30); // Valor por defecto
+            case CUSTOM -> LocalDateTime.now().plusDays(30);
         };
     }
 
