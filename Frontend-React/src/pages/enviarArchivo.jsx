@@ -541,7 +541,7 @@ export default function EnviarArchivo() {
                   onKeyPress={(e) => e.key === 'Enter' && agregarDestinatarioManual(busquedaContactos)}
                   style={{ width: '100%', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 12px 12px 40px', outline: 'none' }}
                 />
-                
+
                 {busquedaContactos && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1D263C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                     {contactosFiltrados.length === 0 ? (
@@ -550,6 +550,7 @@ export default function EnviarArchivo() {
                       </div>
                     ) : (
                       contactosFiltrados.map(contacto => (
+                        
                         <div 
                           key={contacto.contactId} 
                           onClick={() => agregarDestinatario(contacto)}
@@ -574,11 +575,11 @@ export default function EnviarArchivo() {
                   </div>
                 )}
               </div>
-              
-              <button type="button" className="btn btn-secondary" onClick={() => setShowModalBusquedaGlobal(true)} style={{ padding: '0 20px', backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}>
+            </div>
+              <br></br>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowModalBusquedaGlobal(true)} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}>
                 <FaGlobe /> Global
               </button>
-            </div>
           </div>
 
           {/* 3. ENVIAR COPIA (solo para archivos nuevos) */}
