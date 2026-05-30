@@ -1,84 +1,76 @@
-// src/services/profileService.js
-import api from './api';
+import axios from 'axios';
 
-const profileService = {
-  // Obtener mi perfil
-  getMyProfile: async () => {
-    const response = await api.get('/profile/me');
-    return response.data;
-  },
+const API_URL = 'http://localhost:8080/api/profile/';
 
-  // Subir foto de perfil
-  uploadProfilePhoto: async (file) => {
-    const formData = new FormData();
-    formData.append('photo', file);
-
-    const response = await api.post('/profile/photo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    
-    return response.data;
-  },
-
-  // Eliminar foto de perfil
-  deleteProfilePhoto: async () => {
-    const response = await api.delete('/profile/photo');
-    return response.data;
-  },
-
-  // Actualizar datos del perfil
-  updateProfile: async (profileData) => {
-    const response = await api.put('/profile/update', profileData);
-    return response.data;
-  },
-
-  // Obtener información de almacenamiento
-  getStorageInfo: async () => {
-    const response = await api.get('/profile/storage');
-    return response.data;
-  },
-
-  // ✅ BUSCAR USUARIOS GLOBALES (usa el endpoint correcto)
-  searchGlobalUsers: async (query) => {
-    const response = await api.get('/profile/search', { params: { query } });
-    return response.data; // { results: [...] }
-  },
-
-  // ✅ SUGERENCIAS DE USUARIOS (autocompletado)
-  suggestUsers: async (query) => {
-    const response = await api.get('/profile/suggest', { params: { query } });
-    return response.data;
-  },
-
-  // Agregar contacto
-  addContact: async (userId) => {
-    const response = await api.post(`/profile/contacts/${userId}`);
-    return response.data;
-  },
-
-  // Eliminar contacto
-  removeContact: async (contactId) => {
-    const response = await api.delete(`/profile/contacts/${contactId}`);
-    return response.data;
-  },
-
-  // Obtener mis contactos
-  getMyContacts: async (page = 0, size = 20) => {
-    const response = await api.get('/profile/contacts', { params: { page, size } });
-    return response.data;
-  },
-
-  // Buscar dentro de mis contactos
-  searchMyContacts: async (query) => {
-    const response = await api.get('/profile/contacts/search', { params: { query } });
-    return response.data;
-  },
-  searchUsersByAny: async (query) => {
-    console.log('🔍 Buscando usuarios con query:', query);
-    const response = await api.get('/profile/search', { params: { query } });
-    console.log('📦 Respuesta del backend:', response.data);
-    return response.data;
-  },
+const authHeader = () => {
+  const user = JSON.parse(localStorage.getItem('user')); 
+  if (user && user.token) {
+    return { Authorization: 'Bearer ' + user.token };
+  } else {
+    return {};
+  }
 };
 
-export default profileService;
+const getMyProfile = () => {
+  return axios.get(API_URL + 'me', { headers: authHeader() });
+};
+
+
+
+const uploadProfilePhoto = (file) => {
+  const formData = new FormData();
+  formData.append('photo', file); 
+
+  const headers = {
+    ...authHeader(),
+    'Content-Type': 'multipart/form-data'
+  };
+
+  return axios.post(API_URL + 'photo', formData, { headers });
+};
+
+const updateProfile = (profileData) => {
+  return axios.put(API_URL + 'update', profileData, { headers: authHeader() });
+};
+
+const solicitarCambioTelefono = (nuevoTelefono) => {
+  console.log("Enviando SMS a:", nuevoTelefono);
+  return Promise.resolve({ data: { message: "SMS Enviado" } }); 
+};
+
+const verificarYGuardarTelefono = (nuevoTelefono, codigo) => {
+  // Aquí apuntarás a tu endpoint real que verifica el token (ej. /api/auth/verify-sms)
+  console.log("Verificando código", codigo, "para el número", nuevoTelefono);
+  return Promise.resolve({ data: { message: "Teléfono verificado y actualizado" } });
+};
+
+const searchGlobalUsers = (query) => {
+  return axios.get(`${API_URL}search?query=${query}`, { headers: authHeader() });
+};
+
+// Obtener la lista de mis contactos agregados
+const getMyContacts = () => {
+  return axios.get(`${API_URL}contacts`, { headers: authHeader() });
+};
+
+// Agregar un nuevo contacto a mi red
+const addContact = (userId) => {
+  return axios.post(`${API_URL}contacts/${userId}`, {}, { headers: authHeader() });
+};
+
+// Eliminar un contacto de mi red
+const removeContact = (contactId) => {
+  return axios.delete(`${API_URL}contacts/${contactId}`, { headers: authHeader() });
+};
+
+export default {
+  getMyProfile,
+  uploadProfilePhoto,
+  updateProfile,
+  solicitarCambioTelefono,
+  verificarYGuardarTelefono,
+  searchGlobalUsers,
+  getMyContacts,
+  addContact,
+  removeContact
+};

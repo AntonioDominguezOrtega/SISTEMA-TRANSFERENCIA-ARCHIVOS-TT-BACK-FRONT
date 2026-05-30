@@ -18,8 +18,8 @@ import java.util.Optional;
 public interface FileShareRepository extends JpaRepository<FileShare, String> {
 
     // BANDEJA DE ENTRADA: Archivos que ME han compartido y aún no han caducado (isActive = true).
-    @Query("SELECT fs FROM FileShare fs WHERE fs.sharedWith = :user AND fs.isActive = true AND fs.expiresAt > :now ORDER BY fs.sharedAt DESC")
-    Page<FileShare> findReceivedShares(@Param("user") User user, @Param("now") LocalDateTime now, Pageable pageable);
+    @Query("SELECT fs FROM FileShare fs WHERE fs.sharedWith = :user AND fs.isActive = true")
+    Page<FileShare> findReceivedShares(@Param("user") User user, Pageable pageable);
 
     // BANDEJA DE SALIDA: Archivos que YO he enviado.
     @Query("SELECT fs FROM FileShare fs WHERE fs.sharedBy = :user AND fs.isActive = true")
@@ -93,13 +93,5 @@ public interface FileShareRepository extends JpaRepository<FileShare, String> {
     @Query("SELECT fs FROM FileShare fs WHERE fs.sharedWith = :user AND fs.isActive = true AND (fs.expiresAt IS NULL OR fs.expiresAt > :now)")
     List<FileShare> findActiveSharesBySharedWith(@Param("user") User user, @Param("now") LocalDateTime now);
 
-    // Buscar shares por file_id
-    @Query("SELECT fs FROM FileShare fs WHERE fs.file.id = :fileId")
-    List<FileShare> findByFile_Id(@Param("fileId") String fileId);
-
-    // Eliminar shares por file_id (para limpieza masiva)
-    @Modifying
-    @Query("DELETE FROM FileShare fs WHERE fs.file.id = :fileId")
-    void deleteByFile_Id(@Param("fileId") String fileId);
 }
 

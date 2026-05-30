@@ -93,9 +93,5 @@ public class FileShare {
 
     private Boolean isDestroyed = false;
     private LocalDateTime destroyedAt;
-
-    @Column(length = 500)
-    private String message;  // ← Agregar este campo
-
 }
 

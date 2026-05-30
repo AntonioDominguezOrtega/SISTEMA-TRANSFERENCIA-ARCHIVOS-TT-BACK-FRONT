@@ -4,11 +4,9 @@ import com.azure.core.http.rest.PagedIterable;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobItem;
-import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.models.BlobStorageException;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
-import com.azure.storage.common.sas.SasProtocol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +31,7 @@ import java.util.UUID;
 public class AzureBlobService {
 
     private final BlobContainerClient blobContainerClient;
+    private final EncryptionService encryptionService;
 
     /**
      * Sube un archivo a Azure Blob Storage.
@@ -146,6 +145,7 @@ public class AzureBlobService {
 
         return files;
     }
+
     // --- MÉTODOS AUXILIARES ---
 
     private String generateBlobName(String originalFilename) {
@@ -157,24 +157,11 @@ public class AzureBlobService {
         return UUID.randomUUID() + extension;
     }
 
-    /**
-     * Extrae el nombre del blob desde la URL completa
-     * Maneja URLs con SAS tokens y espacios codificados
-     */
-    public String extractBlobNameFromUrl(String blobUrl) {
+    private String extractBlobNameFromUrl(String blobUrl) {
+        // En Azure, el BlobName puede contener rutas (ej. "carpeta/miarchivo.pdf")
+        // Así que debemos extraer todo lo que está después del nombre del contenedor.
         String baseUrl = blobContainerClient.getBlobContainerUrl() + "/";
-        String withoutBase = blobUrl.replace(baseUrl, "");
-
-        // Remover parámetros de consulta (ej. ?sv=2021-08-06&se=...)
-        int queryIndex = withoutBase.indexOf('?');
-        if (queryIndex != -1) {
-            withoutBase = withoutBase.substring(0, queryIndex);
-        }
-
-        // Decodificar espacios (Azure los codifica como %20)
-        withoutBase = withoutBase.replace("%20", " ");
-
-        return withoutBase;
+        return blobUrl.replace(baseUrl, "");
     }
 
     /**
@@ -213,123 +200,5 @@ public class AzureBlobService {
         String blobUrl = blobClient.getBlobUrl();
         log.info("🔵 Archivo subido, URL: {}", blobUrl);
         return blobUrl;
-    }
-
-    /**
-     * Genera una URL con SAS token para acceder a un blob privado
-     * @param blobUrl La URL completa del blob
-     * @param expirationMinutes Minutos de validez
-     * @return URL con SAS token incluido
-     */
-    public String generateSasTokenForUrl(String blobUrl, int expirationMinutes) {
-        try {
-            String blobName = extractBlobNameFromUrl(blobUrl);
-            BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
-
-            BlobSasPermission permission = new BlobSasPermission()
-                    .setReadPermission(true);
-
-            OffsetDateTime expiryTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
-
-            BlobServiceSasSignatureValues sasValues = new BlobServiceSasSignatureValues(expiryTime, permission)
-                    .setContentDisposition("inline")
-                    .setProtocol(SasProtocol.HTTPS_ONLY)
-                    .setCacheControl("no-cache");
-
-            String sasToken = blobClient.generateSas(sasValues);
-
-            // ✅ Limpiar el token
-            String cleanSasToken = sasToken.replace("%2F", "/").replace("%3D", "=");
-
-            String signedUrl = blobClient.getBlobUrl() + "?" + cleanSasToken;
-            log.info("SAS Token generado para: {} (inline)", blobName);
-            return signedUrl;
-
-        } catch (Exception e) {
-            log.error("Error generando SAS token: {}", e.getMessage());
-            return blobUrl;
-        }
-    }
-
-    /**
-     * Genera una URL para vista previa (inline) - Funciona para PDFs e imágenes
-     */
-    /**
-     * Genera una URL para vista previa (inline) - Funciona para PDFs e imágenes
-     * @param blobUrl URL del blob en Azure
-     * @param expirationMinutes Minutos de validez del token
-     * @param fileTypeHint Tipo de archivo desde la BD (ej. "application/pdf")
-     */
-    public String generatePreviewUrl(String blobUrl, int expirationMinutes, String fileTypeHint) {
-        try {
-            String blobName = extractBlobNameFromUrl(blobUrl);
-            BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
-
-            // ✅ Verificar que el blob existe
-            if (!blobClient.exists()) {
-                log.error("❌ El blob no existe: {}", blobName);
-                throw new RuntimeException("El archivo no existe en Azure");
-            }
-
-            // ✅ Configurar permisos: SOLO LECTURA
-            BlobSasPermission permission = new BlobSasPermission()
-                    .setReadPermission(true);
-
-            // ✅ Expiración: 30 minutos desde ahora (no usar la que viene por parámetro si es muy larga)
-            OffsetDateTime expiryTime = OffsetDateTime.now().plusMinutes(30);
-
-            // ✅ Construir el SAS token correctamente
-            BlobServiceSasSignatureValues sasValues = new BlobServiceSasSignatureValues(expiryTime, permission)
-                    .setContentDisposition("inline")
-                    .setProtocol(SasProtocol.HTTPS_ONLY)
-                    .setCacheControl("no-cache");
-
-            String sasToken = blobClient.generateSas(sasValues);
-
-            // ✅ La URL final
-            String signedUrl = blobClient.getBlobUrl() + "?" + sasToken;
-
-            log.info("✅ Preview URL generada correctamente para: {}", blobName);
-            return signedUrl;
-
-        } catch (Exception e) {
-            log.error("❌ Error generando preview URL: {}", e.getMessage());
-            throw new RuntimeException("Error al generar URL de preview: " + e.getMessage());
-        }
-    }
-
-    // En AzureBlobService.java - Agrega este método
-
-    /**
-     * Sube datos YA CIFRADOS a Azure Blob Storage
-     * @param encryptedData Los bytes del archivo ya cifrados
-     * @param blobName Nombre del blob en Azure
-     * @return URL del blob
-     */
-    public String uploadEncryptedData(byte[] encryptedData, String blobName) throws IOException {
-        BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
-
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(encryptedData)) {
-            blobClient.upload(inputStream, encryptedData.length, true);
-        } catch (BlobStorageException e) {
-            log.error("Error al subir datos cifrados a Azure {}", e.getMessage());
-            throw new RuntimeException("Error al subir archivo cifrado", e);
-        }
-
-        log.info("Datos cifrados subidos exitosamente: {}", blobName);
-        return blobClient.getBlobUrl();
-    }
-
-    /**
-     * Descarga los bytes CIFRADOS desde Azure
-     */
-    public byte[] downloadEncryptedBytes(String blobUrl) {
-        String blobName = extractBlobNameFromUrl(blobUrl);
-        BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        blobClient.downloadStream(outputStream);
-
-        return outputStream.toByteArray();
     }
 }

@@ -1,69 +1,34 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import profileService from '../services/profileService';
-import searchService from '../services/searchService';
-import notificationService from '../services/notificationService';
-//import websocketService from '../services/websocketService';
-
-// React Icons
-import { 
-  FaBars, FaSearch, FaRegBell, FaChevronDown, FaChevronUp, 
-  FaUser, FaCog, FaSignOutAlt, FaLock, FaShieldAlt 
-} from 'react-icons/fa';
-
-// Helper para obtener iniciales
-const getInitials = (nombre, apellido) => {
-  if (!nombre) return 'U';
-  const primera = nombre.charAt(0).toUpperCase();
-  const segunda = apellido ? apellido.charAt(0).toUpperCase() : '';
-  return `${primera}${segunda}`;
-};
-
-// Helper para el icono según tipo
-const getResultIcon = (item) => {
-  if (item.isFolder) return '📁';
-  if (item.type === 'SHARED') return '📩';
-  return '📄';
-};
-
-// Badge de seguridad para resultados de búsqueda
-const getSecurityBadge = (securityLevel) => {
-  if (securityLevel === 'PASSWORD') return <FaLock title="Protegido con contraseña" style={{ color: '#faad14', marginRight: '4px', fontSize: '0.75rem' }} />;
-  if (securityLevel === 'TOKEN_SMS') return <FaShieldAlt title="Verificación SMS" style={{ color: '#0a3fff', marginRight: '4px', fontSize: '0.75rem' }} />;
-  return null;
-};
+import { useState, useEffect, useRef } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import profileService from '../services/profileService'
+import searchService from '../services/searchService' // 🌟 NUEVO IMPORT
 
 export default function PrivateHeader({ toggleSidebar }) {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate = useNavigate()
+  const location = useLocation()
   
-  // Estados de UI
   const [scrolled, setScrolled] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  
-  // Estados de búsqueda
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showResults, setShowResults] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchRef = useRef(null);
-  
-  // Estados de notificaciones
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  const notificationsRef = useRef(null);
-  
-  // Estados de usuario
-  const [user, setUser] = useState(null);
-  const [userInitials, setUserInitials] = useState('');
-  const [userFotoUrl, setUserFotoUrl] = useState(null);
-  const userMenuRef = useRef(null);
 
-  // ============================================================
-  // EFECTO DE SCROLL
-  // ============================================================
+  // Estados de Búsqueda y Notificaciones
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [showResults, setShowResults] = useState(false)
+  const [isSearching, setIsSearching] = useState(false) // 🌟 Control de carga
+  const searchRef = useRef(null)
+
+  // Menú de Usuario
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef(null)
+
+  // Estado del usuario (con foto actualizada)
+  const [userData, setUserData] = useState({
+    nombre: 'Usuario',
+    iniciales: 'U',
+    fotoUrl: null
+  });
+
+  // 🌟 Control del Scroll
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
@@ -72,74 +37,43 @@ export default function PrivateHeader({ toggleSidebar }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ============================================================
-  // CARGAR DATOS DEL USUARIO
-  // ============================================================
+  // 🌟 Cargar datos frescos del usuario
   useEffect(() => {
-    const loadUser = async () => {
+    const session = localStorage.getItem('user');
+    if (session) {
       try {
-        const session = localStorage.getItem('user');
-        let currentUser = null;
-        
+        const userObj = JSON.parse(session);
+        setUserData({
+          nombre: (userObj.nombre || 'Usuario').split(' ')[0],
+          iniciales: (userObj.nombre || 'Us').substring(0, 2).toUpperCase(),
+          fotoUrl: userObj.profilePictureUrl || null
+        });
+      } catch (error) {}
+    }
+
+    profileService.getMyProfile()
+      .then(response => {
+        const perfilReal = response.data;
+        const nuevaFoto = perfilReal.profilePictureUrl || null;
+        setUserData({
+          nombre: (perfilReal.nombre || 'Usuario').split(' ')[0],
+          iniciales: (perfilReal.nombre || 'Us').substring(0, 2).toUpperCase(),
+          fotoUrl: nuevaFoto
+        });
         if (session) {
-          currentUser = JSON.parse(session);
-          setUser(currentUser);
-          const nombreInicial = currentUser.nombre?.charAt(0) || '';
-          const apellidoInicial = currentUser.apellido?.charAt(0) || '';
-          setUserInitials(`${nombreInicial}${apellidoInicial}`.toUpperCase());
-          setUserFotoUrl(currentUser.profilePictureUrl || null);
+          const userObj = JSON.parse(session);
+          userObj.profilePictureUrl = nuevaFoto;
+          localStorage.setItem('user', JSON.stringify(userObj));
         }
-        
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            const profile = await profileService.getMyProfile();
-            setUser(prev => ({ ...prev, ...profile }));
-            setUserInitials(getInitials(profile.nombre, profile.apellido));
-            setUserFotoUrl(profile.profilePictureUrl || null);
-            if (currentUser) {
-              localStorage.setItem('user', JSON.stringify({ ...currentUser, ...profile }));
-            }
-          } catch (profileError) {
-            console.error('Error obteniendo perfil:', profileError);
-          }
-        }
-      } catch (error) {
-        console.error('Error cargando usuario:', error);
-      }
-    };
-    
-    loadUser();
+      })
+      .catch(err => console.error("No se pudo refrescar el perfil en el Header", err));
   }, []);
 
-  // ============================================================
-  // CARGAR NOTIFICACIONES
-  // ============================================================
-  const loadNotifications = async () => {
-    setIsLoadingNotifications(true);
-    try {
-      const data = await notificationService.getNotifications(0, 30);
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
-    } catch (error) {
-      console.error('Error cargando notificaciones:', error);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      loadNotifications();
-    }
-  }, [user]);
-
-  // ============================================================
-  // BÚSQUEDA EN VIVO
-  // ============================================================
+  // 🌟 BÚSQUEDA REAL CONECTADA AL BACKEND
   useEffect(() => {
     const query = searchTerm.trim();
     
+    // Tu backend de sugerencias exige mínimo 2 caracteres
     if (query.length >= 2) {
       setIsSearching(true);
       setShowResults(true);
@@ -147,6 +81,7 @@ export default function PrivateHeader({ toggleSidebar }) {
       const delayBusqueda = setTimeout(() => {
         searchService.suggestFiles(query)
           .then(response => {
+            // El backend devuelve { suggestions: [...] }
             setSearchResults(response.data.suggestions || []);
             setIsSearching(false);
           })
@@ -154,7 +89,7 @@ export default function PrivateHeader({ toggleSidebar }) {
             console.error("Error al buscar archivos:", error);
             setIsSearching(false);
           });
-      }, 400);
+      }, 400); // 400ms de Debounce
 
       return () => clearTimeout(delayBusqueda);
     } else {
@@ -163,278 +98,111 @@ export default function PrivateHeader({ toggleSidebar }) {
     }
   }, [searchTerm]);
 
-  // ============================================================
-  // CERRAR MENÚS AL CLICAR FUERA (CON AUTO-MARCADO DE NOTIFICACIONES)
-  // ============================================================
+  // Cierra menús al clickear fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowResults(false);
-      }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        if (showNotifications && unreadCount > 0) {
-          handleMarkAllAsRead();
-        }
-        setShowNotifications(false);
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setShowUserMenu(false);
-      }
-    };
+      if (searchRef.current && !searchRef.current.contains(event.target)) setShowResults(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) setShowUserMenu(false);
+    }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications, unreadCount]);
+  }, [])
 
-  // ============================================================
-  // MANEJADORES
-  // ============================================================
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
       setShowResults(false);
+      // Redirige a la página de búsqueda avanzada (donde podrás usar searchService.searchFiles)
       navigate(`/busqueda?q=${encodeURIComponent(searchTerm)}`);
     }
-  };
-
-  const handleResultClick = (item) => {
-    setShowResults(false);
-    setSearchTerm('');
-    
-    if (item.type === 'FOLDER') {
-      navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
-    } else if (item.type === 'PERSONAL') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            id: item.id,
-            name: item.name,
-            type: 'personal',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: false
-          }
-        }
-      });
-    } else if (item.type === 'SHARED') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            shareId: item.id,
-            name: item.name,
-            type: 'shared',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: item.isExpired,
-            sharedBy: item.sharedBy
-          }
-        }
-      });
-    } else {
-      navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
-    }
-  };
-
-  const handleMarkAsRead = async (notificationId) => {
-    try {
-      await notificationService.markAsRead(notificationId);
-      setNotifications(prev => prev.map(n => 
-        n.id === notificationId ? { ...n, isRead: true } : n
-      ));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await notificationService.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const handleLogout = () => {
-    if (typeof websocketService !== 'undefined') {
-      try {
-        websocketService.disconnect();
-      } catch(e) {
-        console.error('Error al desconectar WebSocket:', e);
-      }
-    }
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.clear();
-    setShowUserMenu(false);
-    navigate('/');
-  };
-
-  // Formatear tiempo de notificación
-  const formatNotificationTime = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'Ahora';
-    if (diffMins < 60) return `Hace ${diffMins} min`;
-    if (diffHours < 24) return `Hace ${diffHours} h`;
-    return `Hace ${diffDays} d`;
-  };
-
-  // ============================================================
-  // RENDER CONDICIONAL
-  // ============================================================
-  if (!user) {
-    return (
-      <header className={`private-header ${scrolled ? 'header-scrolled' : ''}`} style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000,
-        transition: 'all 0.4s ease',
-        padding: scrolled ? '0.5rem 2rem' : '0.85rem 2rem',
-        backgroundColor: scrolled ? 'rgba(24, 35, 60, 0.95)' : '#18233C',
-        boxShadow: scrolled ? '0 4px 20px rgba(10, 63, 255, 0.5)' : '0 4px 14px rgba(0, 0, 0, 0.15)',
-        backdropFilter: scrolled ? 'blur(10px)' : 'none',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button onClick={toggleSidebar} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>☰</button>
-          <Link to="/dashboard"><img src="/assets2/img/logo.png" alt="Logo" style={{ height: scrolled ? '30px' : '60px', width: 'auto', objectFit: 'contain', transition: 'height 0.3s ease' }} /></Link>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#0a3fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>?</div>
-          <span style={{ color: 'white' }}>Cargando...</span>
-        </div>
-      </header>
-    );
   }
 
-  // ============================================================
-  // RENDER PRINCIPAL
-  // ============================================================
+  const handleLogout = () => {
+    localStorage.clear(); 
+    setShowUserMenu(false);
+    navigate('/'); 
+  };
+
   return (
     <header className={`private-header ${scrolled ? 'header-scrolled' : ''}`} style={{
       position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000,
       transition: 'all 0.4s ease',
-      padding: scrolled ? '0.5rem 2rem' : '0.85rem 2rem',
-      backgroundColor: scrolled ? 'rgba(24, 35, 60, 0.95)' : '#18233C',
-      boxShadow: scrolled ? '0 4px 20px rgba(10, 63, 255, 0.5)' : '0 4px 14px rgba(0, 0, 0, 0.15)',
+      padding: scrolled ? '0.5rem 28px' : '0.85rem 28px',
+      minHeight: scrolled ? '65px' : '82px',
+      backgroundColor: scrolled ? 'rgba(24, 35, 60, 0.95)' : '#18233C', 
+      boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.3)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
       backdropFilter: scrolled ? 'blur(10px)' : 'none',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '20px'
+      borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
     }}>
       
-      {/* LEFT: Logo y menú */}
-      <div className="private-header-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <button className="menu-toggle-btn" onClick={toggleSidebar} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>
-          <FaBars />
-        </button>
-        <Link to="/dashboard" className="private-logo">
-          <img 
-            src="/assets2/img/logo.png" 
-            alt="Logo Capara" 
-            className='logo-img'
-            style={{
-              height: scrolled ? '30px' : '60px', 
-              width: 'auto',          
-              objectFit: 'contain',   
-              transition: 'height 0.3s ease' 
-            }} 
-          />
+      <div className="private-header-left">
+        <button className="menu-toggle-btn" onClick={toggleSidebar}>☰</button>
+        <Link to="/dashboard" className="private-logo" style={{ color: 'var(--color-white)', fontWeight: '700' }}>
+          <img src="/assets2/img/logo.png" 
+               alt="Logo Capara" 
+               className='logo-img'
+               style={{
+                  height: scrolled ? '40px' : '70px', 
+                  width: 'auto',          
+                  objectFit: 'contain',   
+                  transition: 'height 0.3s ease' 
+                }} />
         </Link>
       </div>
 
-      {/* CENTER: Buscador */}
+      {/* --- BUSCADOR --- */}
       <div className="private-header-center" ref={searchRef} style={{ position: 'relative', width: '100%', maxWidth: '720px' }}>
-        <form className="header-search" onSubmit={handleSearchSubmit} style={{ margin: 0, display: 'flex' }}>
+        <form className="header-search" onSubmit={handleSearchSubmit} style={{ margin: 0 }}>
           <input 
             type="text" 
-            placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
+            placeholder="Buscar en todos tus archivos y compartidos..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => { if(searchTerm.trim().length >= 2) setShowResults(true) }}
-            style={{
-              flex: 1,
-              padding: '10px 15px',
-              border: 'none',
-              borderRadius: '8px 0 0 8px',
-              outline: 'none',
-              backgroundColor: 'rgba(255,255,255,0.1)',
-              color: 'white'
-            }}
           />
-          <button type="submit" style={{
-            padding: '10px 15px',
-            border: 'none',
-            borderRadius: '0 8px 8px 0',
-            backgroundColor: '#0a3fff',
-            color: 'white',
-            cursor: 'pointer'
-          }}>
-            <FaSearch />
-          </button>
+          <button type="submit">🔍</button>
         </form>
 
-        {/* Dropdown de resultados */}
+        {/* 🌟 Dropdown Dinámico del Servidor */}
         {showResults && searchTerm.trim().length >= 2 && (
           <div className="search-results-dropdown" style={{
             position: 'absolute', top: '110%', left: 0, width: '100%',
-            backgroundColor: '#1D263C', boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            backgroundColor: 'var(--color-primary)', boxShadow: 'var(--shadow-medium)',
             borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', zIndex: 1000,
             overflow: 'hidden', textAlign: 'left'
           }}>
             {isSearching ? (
-              <div style={{ padding: '16px', color: '#888', textAlign: 'center' }}>
-                Buscando archivos...
-              </div>
+               <div style={{ padding: '16px', color: 'var(--color-text-medium)', textAlign: 'center' }}>
+                 Buscando archivos...
+               </div>
             ) : searchResults.length === 0 ? (
-              <div style={{ padding: '16px', color: '#888', textAlign: 'center' }}>
+              <div style={{ padding: '16px', color: 'var(--color-text-medium)', textAlign: 'center' }}>
                 No se encontraron archivos con "{searchTerm}"
               </div>
             ) : (
               <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                <div style={{ padding: '8px 16px', backgroundColor: 'rgba(255,255,255,0.05)', fontSize: '0.75rem', color: '#888' }}>
+                <div style={{ padding: '8px 16px', backgroundColor: 'var(--color-dark)', fontSize: '0.8rem', color: 'var(--color-text-medium)' }}>
                   Resultados sugeridos
                 </div>
-                {searchResults.map((item, index) => (
+                {searchResults.map(item => (
                   <div 
-                    key={item.id || index}
-                    onClick={() => handleResultClick(item)}
-                    className="search-item"
-                    style={{ 
-                      padding: '12px 16px', 
-                      borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '12px', 
-                      cursor: 'pointer',
-                      transition: 'background 0.2s'
+                    key={item.id}
+                    onClick={() => {
+                      setShowResults(false);
+                      setSearchTerm('');
+                      // El backend nos dice si es FOLDER o archivo (PERSONAL / SHARED)
+                      navigate(item.type === 'FOLDER' ? `/carpeta/${item.id}` : `/archivo/${item.id}`);
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    className="search-item"
+                    style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
                   >
-                    <span style={{ fontSize: '1.2rem' }}>{getResultIcon(item)}</span>
+                    <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
-                        {getSecurityBadge(item.securityLevel)}
+                      <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-white)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                         {item.name}
                       </p>
-                      <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>
-                        {item.location || 'Mis archivos'}
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-medium)' }}>
+                        {item.location}
                       </p>
                     </div>
                   </div>
@@ -445,212 +213,54 @@ export default function PrivateHeader({ toggleSidebar }) {
         )}
       </div>
 
-      {/* RIGHT: Notificaciones y Usuario */}
-      <div className="private-header-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        
-        {/* NOTIFICACIONES */}
-        <div style={{ position: 'relative' }} ref={notificationsRef}>
-          <button 
-            className="icon-btn" 
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              if (!showNotifications) {
-                loadNotifications();
-              }
-            }}
-            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', position: 'relative' }}
-          >
-            <FaRegBell />
-            {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-8px',
-                right: '-8px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                borderRadius: '50%',
-                padding: '2px 6px',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                minWidth: '18px',
-                textAlign: 'center'
-              }}>
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-
+      {/* --- SECCIÓN DERECHA --- */}
+      <div className="private-header-right">
+        <div style={{ position: 'relative' }}>
+          <button className="icon-btn" onClick={() => setShowNotifications(!showNotifications)}>🔔</button>
+          
           {showNotifications && (
-            <div className="notifications-dropdown" style={{
-              position: 'absolute', top: '130%', right: '0', width: '340px',
-              backgroundColor: '#1D263C', boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', zIndex: 1000,
-              overflow: 'hidden', maxHeight: '420px', display: 'flex', flexDirection: 'column'
-            }}>
-              <div style={{ 
-                padding: '12px 16px', 
-                borderBottom: '1px solid rgba(255,255,255,0.08)', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.03)'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: 'white' }}>Notificaciones</h3>
-                {unreadCount > 0 && (
-                  <button 
-                    onClick={handleMarkAllAsRead}
-                    style={{ background: 'none', border: 'none', color: '#46A2FD', cursor: 'pointer', fontSize: '0.7rem' }}
-                  >
-                    Marcar todas
-                  </button>
-                )}
-              </div>
-              
-              <div style={{ overflowY: 'auto', maxHeight: '350px' }}>
-                {isLoadingNotifications ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Cargando...</div>
-                ) : notifications.length === 0 ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-                    <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>🔔</span>
-                    No hay notificaciones
-                  </div>
-                ) : (
-                  notifications.map(notif => {
-                    let icon = '📢';
-                    if (notif.type === 'NEW_FILE_SHARED') icon = '📤';
-                    else if (notif.type === 'FILE_VIEWED') icon = '👁️';
-                    else if (notif.type === 'FILE_DOWNLOADED') icon = '⬇️';
-                    else if (notif.type === 'FILE_EXPIRING') icon = '⚠️';
-                    
-                    return (
-                      <div 
-                        key={notif.id}
-                        onClick={() => {
-                          if (!notif.isRead) {
-                            handleMarkAsRead(notif.id);
-                          }
-                          if (notif.fileShareId) {
-                            setShowNotifications(false);
-                            navigate(`/dashboard?tab=recibidos`);
-                          }
-                        }}
-                        style={{
-                          padding: '12px 16px',
-                          borderBottom: '1px solid rgba(255,255,255,0.05)',
-                          backgroundColor: notif.isRead ? 'transparent' : 'rgba(70, 162, 253, 0.1)',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = notif.isRead ? 'transparent' : 'rgba(70, 162, 253, 0.1)'}
-                      >
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: '1.1rem' }}>{icon}</span>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'white', lineHeight: '1.4' }}>
-                              {notif.message}
-                            </p>
-                            <small style={{ fontSize: '0.65rem', color: '#888', display: 'block', marginTop: '4px' }}>
-                              {formatNotificationTime(notif.cratedAt || notif.createdAt)}
-                            </small>
-                          </div>
-                          {!notif.isRead && (
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#46A2FD', alignSelf: 'center' }} />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+            <div className="notifications-dropdown" style={{ position: 'absolute', top: '130%', right: '0', width: '300px', backgroundColor: 'var(--color-primary)', boxShadow: 'var(--shadow-medium)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', zIndex: 1000, padding: '16px' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: 'var(--color-accent)' }}>Notificaciones</h3>
+              <p style={{ color: 'var(--color-text-medium)', textAlign: 'center', margin: 0, fontSize: '0.9rem' }}>No hay novedades</p>
             </div>
           )}
         </div>
 
-        {/* MENÚ DE USUARIO */}
+        {/* --- MENU DESPLEGABLE DE USUARIO --- */}
         <div className="user-menu-container" ref={userMenuRef} style={{ position: 'relative' }}>
-          <div 
-            className="user-box" 
-            onClick={() => setShowUserMenu(!showUserMenu)} 
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              padding: '4px 8px',
-              borderRadius: '30px',
-              transition: 'background 0.2s'
-            }}
-          >
-            <div className="user-avatar" style={{
-              width: '38px', 
-              height: '38px', 
-              borderRadius: '50%',
-              backgroundColor: userFotoUrl ? 'transparent' : '#0a3fff',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              color: 'white', 
-              fontWeight: 'bold', 
-              fontSize: '14px',
-              overflow: 'hidden'
+          <div className="user-box" onClick={() => setShowUserMenu(!showUserMenu)} style={{ cursor: 'pointer' }}>
+            
+            <div className="user-avatar" style={{ 
+              backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', width: '38px', height: '38px', borderRadius: '50%'
             }}>
-              {userFotoUrl ? (
-                <img 
-                  src={userFotoUrl} 
-                  alt="Perfil" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerText = userInitials;
-                    e.target.parentElement.style.backgroundColor = '#0a3fff';
-                  }}
-                />
+              {userData.fotoUrl ? (
+                <img src={userData.fotoUrl} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                userInitials
+                userData.iniciales
               )}
             </div>
-            <span className="user-name" style={{ color: 'white', fontWeight: '500', fontSize: '0.9rem' }}>
-              {user?.nombre?.split(' ')[0] || 'Usuario'}
+
+            <span className="user-name" style={{ color: 'var(--color-white)' }}>
+              {userData.nombre}
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#46A2FD' }}>
-              {showUserMenu ? <FaChevronUp /> : <FaChevronDown />}
-            </span>
+            <span style={{ fontSize: '0.7rem', marginLeft: '5px', color: 'var(--color-accent)' }}>{showUserMenu ? '▲' : '▼'}</span>
           </div>
 
           {showUserMenu && (
             <div className="user-dropdown" style={{
-              position: 'absolute', top: '130%', right: '0', width: '200px',
-              backgroundColor: '#1D263C', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 1001, overflow: 'hidden', padding: '5px 0'
+              position: 'absolute', top: '130%', right: '0', width: '190px',
+              backgroundColor: 'var(--color-primary)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: 'var(--shadow-medium)', zIndex: 1001, overflow: 'hidden', padding: '5px 0'
             }}>
-              <button 
-                onClick={() => { navigate('/perfil'); setShowUserMenu(false); }}
-                style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: 'white', fontSize: '0.85rem' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <FaUser style={{ color: '#46A2FD' }} /> Mi Perfil
-              </button>
-              <button 
-                onClick={() => { navigate('/configuracion'); setShowUserMenu(false); }}
-                style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: 'white', fontSize: '0.85rem' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <FaCog style={{ color: '#46A2FD' }} /> Configuración
-              </button>
-              <button 
-                onClick={handleLogout}
-                style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#ff4d4f', fontSize: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <FaSignOutAlt /> Cerrar Sesión
-              </button>
+              <button className="dropdown-item" onClick={() => { navigate('/perfil'); setShowUserMenu(false); }} style={{ width: '100%', padding: '12px 16px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--color-white)' }}>👤 Mi Perfil</button>
+              <button className="dropdown-item" onClick={() => { navigate('/configuracion'); setShowUserMenu(false); }} style={{ width: '100%', padding: '12px 16px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--color-white)' }}>⚙️ Configuración</button>
+              <button className="dropdown-item logout" onClick={handleLogout} style={{ width: '100%', padding: '12px 16px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: '#ff4d4f', borderTop: '1px solid rgba(255,255,255,0.05)' }}>🚪 Cerrar Sesión</button>
             </div>
           )}
         </div>
       </div>
     </header>
-  );
+  )
 }

@@ -2,23 +2,19 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.FileShareResponse;
 import com.example.demo.dto.FileUploadRequest;
-import com.example.demo.model.FileShare;
 import com.example.demo.service.FileShareService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.awt.*;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/files")
@@ -172,37 +168,16 @@ public class FileShareController {
      * Descargar archivo (físico a la computadora).
      * Retorna el Link mágico de Azure para que React dispare la descarga.
      */
-    /**
-     * Descargar archivo (físico a la computadora).
-     */
     @GetMapping("/{shareId}/download")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> downloadFile(@PathVariable String shareId) {
         try {
-            byte[] fileBytes = fileShareService.downloadFile(shareId);
-            FileShareResponse share = fileShareService.getFileDetails(shareId);
-
-            String contentType = share.getFileType();
-            if (contentType == null || contentType.isEmpty()) {
-                contentType = "application/octet-stream";
-            }
-
-            // ODIFICAR EL NOMBRE DEL ARCHIVO PARA CABECERAS HTTP
-            String fileName = share.getFileName();
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-                    .replaceAll("\\+", "%20");
-
-            log.info("📥 Descargando archivo: {}, tamaño: {} bytes, tipo: {}",
-                    fileName, fileBytes.length, contentType);
-
-            return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
-                    .header("Content-Type", contentType)
-                    .header("Content-Length", String.valueOf(fileBytes.length))
-                    .body(fileBytes);
-
+            String downloadUrl = fileShareService.downloadFile(shareId);
+            return ResponseEntity.ok(Map.of(
+                    "downloadUrl", downloadUrl,
+                    "message", "URL de descarga generada (valida por 1 hora)"
+            ));
         } catch (Exception e) {
-            log.error("Error en descarga: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -215,8 +190,9 @@ public class FileShareController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getFileDetails(@PathVariable String shareId) {
         try {
-            FileShareResponse response = fileShareService.getFileDetails(shareId);
-            return ResponseEntity.ok(response);
+            // Crear despues el servicio 'getFileDetails'.
+            // Por ahora solo es un esqueleto de respuesta.
+            return ResponseEntity.ok(Map.of("shareId", shareId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -248,61 +224,5 @@ public class FileShareController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-    }
-
-
-    /**
-     * Obtener URL para vista previa de archivo compartido (solo lectura)
-     */
-    @GetMapping("/{shareId}/preview")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> getPreviewUrl(@PathVariable String shareId) {
-        try {
-            FileShareResponse share = fileShareService.getFileDetails(shareId);
-            String fileType = share.getFileType();
-
-            log.info("📄 Tipo de archivo detectado: {}", fileType);
-            log.info("📄 Nombre del archivo: {}", share.getFileName());
-
-            // ✅ PARA TODOS LOS TIPOS de archivo, devolver bytes descifrados
-            byte[] decryptedBytes = fileShareService.getDecryptedFileForPreview(shareId);
-
-            String fileName = share.getFileName();
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-                    .replaceAll("\\+", "%20");
-
-            // Determinar Content-Type según el tipo de archivo
-            String contentType = determineContentType(fileType, fileName);
-
-            log.info("✅ Bytes descifrados obtenidos, tamaño: {} bytes, tipo: {}", decryptedBytes.length, contentType);
-
-            return ResponseEntity.ok()
-                    .header("Content-Type", contentType)
-                    .header("Content-Disposition", "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
-                    .header("Content-Length", String.valueOf(decryptedBytes.length))
-                    .body(decryptedBytes);
-
-        } catch (Exception e) {
-            log.error("❌ Error en preview: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    // Método auxiliar para determinar Content-Type
-    private String determineContentType(String fileType, String fileName) {
-        if (fileType != null && !fileType.isEmpty()) {
-            return fileType;
-        }
-
-        // Fallback por extensión
-        String lowerFileName = fileName.toLowerCase();
-        if (lowerFileName.endsWith(".png")) return "image/png";
-        if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg")) return "image/jpeg";
-        if (lowerFileName.endsWith(".gif")) return "image/gif";
-        if (lowerFileName.endsWith(".mp4")) return "video/mp4";
-        if (lowerFileName.endsWith(".pdf")) return "application/pdf";
-        if (lowerFileName.endsWith(".txt")) return "text/plain";
-
-        return "application/octet-stream";
     }
 }
