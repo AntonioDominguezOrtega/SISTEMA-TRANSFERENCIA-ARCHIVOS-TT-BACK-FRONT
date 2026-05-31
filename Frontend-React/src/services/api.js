@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Utiliza la variable de entorno para producción o localhost para desarrollo
 // Apunta a tu servidor backend en Azure Web Apps
+// La URL de tu backend en Azure (no la del frontend)
 const API_BASE_URL = 'https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net/api';
 
 const api = axios.create({
