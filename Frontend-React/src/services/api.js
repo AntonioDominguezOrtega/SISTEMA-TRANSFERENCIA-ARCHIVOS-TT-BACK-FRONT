@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Utiliza la variable de entorno para producción o localhost para desarrollo
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = 'https://yellow-cliff-06ded060f.7.azurestaticapps.net/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
