@@ -39,11 +39,11 @@ export default function PublicHeader() {
                alt="Logo Capara" 
                className='logo-img'
                style={{
-                  /* 🌟 AQUÍ SE CAMBIA EL TAMAÑO: Si el usuario baja mide 32px, si está arriba mide 40px */
-                  height: scrolled ? '50px' : '100px', 
-                  width: 'auto',          /* Mantiene la proporción para que no se aplaste */
-                  objectFit: 'contain',   /* Evita que se deforme */
-                  transition: 'height 0.3s ease' /* Hace el cambio de tamaño suave */
+                  /* 🌟 Logo responsivo: clamp(mín, preferido, máx) */
+                  height: scrolled ? 'clamp(32px, 4vw, 50px)' : 'clamp(50px, 7vw, 100px)', 
+                  width: 'auto',
+                  objectFit: 'contain',
+                  transition: 'height 0.3s ease'
                 }}
           />
         </Link>
