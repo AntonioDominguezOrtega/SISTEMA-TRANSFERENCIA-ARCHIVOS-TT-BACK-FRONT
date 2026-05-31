@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/search';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const authHeader = () => {
   const user = JSON.parse(localStorage.getItem('user')); 
