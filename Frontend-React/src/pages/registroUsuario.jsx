@@ -225,7 +225,7 @@ export default function RegistroUsuario() {
                     <label className="form-label" htmlFor="password">Contraseña</label>
                     <input type={showPassword ? 'text' : 'password'} id="password" className="form-control-modern" placeholder="••••••••" required value={formData.password} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
                     <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                      {showRegPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
 
@@ -233,7 +233,7 @@ export default function RegistroUsuario() {
                     <label className="form-label" htmlFor="confirmPassword">Confirmar Contraseña</label>
                     <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" className="form-control-modern" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
                     <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
-                      {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                      {showRegPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
                 </div>
