@@ -224,16 +224,16 @@ export default function RegistroUsuario() {
                   <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="password">Contraseña</label>
                     <input type={showPassword ? 'text' : 'password'} id="password" className="form-control-modern" placeholder="••••••••" required value={formData.password} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
-                    <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
-                      {showRegPassword ? <FaEye /> : <FaEyeSlash />}
+                    <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
+                      {showPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
 
                   <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="confirmPassword">Confirmar Contraseña</label>
                     <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" className="form-control-modern" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
-                    <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '45px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
-                      {showRegPassword ? <FaEye /> : <FaEyeSlash />}
+                    <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
+                      {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
                 </div>

@@ -35,18 +35,19 @@ export default function Home() {
         {/* =======================================================
             🌟 SECCIÓN HERO REDISEÑADA: IMPACTO VISUAL EN "CAPARA"
            ======================================================= */}
-        <section className="hero section reveal" style={{ paddingTop: '160px', paddingBottom: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="container hero-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '50px', width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 20px', alignItems: 'center' }}>
+        <section className="hero section reveal" style={{ paddingTop: '120px', paddingBottom: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', '@media (max-width: 768px)': { paddingTop: '80px', paddingBottom: '40px' } }}>
+          <div className="container hero-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 16px', alignItems: 'center' }}>
             
             {/* Bloque de Texto: Tipografía Neón Masiva */}
-            <div className="hero-text" style={{ textAlign: 'left' }}>              
-              <h1 style={{ fontSize: '3.5rem', fontWeight: '900', lineHeight: '1.1', marginTop: '20px', marginBottom: '20px', color: 'white' }}>
-                Preserva la confidencialidad en el intercambio de archivos con <br />
+            <div className="hero-text" style={{ textAlign: 'center' }}>              
+              <h1 style={{ fontSize: 'clamp(1.8rem, 5vw, 3.5rem)', fontWeight: '900', lineHeight: '1.2', marginTop: '0', marginBottom: '20px', color: 'white' }}>
+                Preserva la confidencialidad en el intercambio de archivos con
+                <br />
                 <span style={{ 
                   background: 'linear-gradient(45deg, #0a3fff, #46A2FD, #14d7fa)', 
                   WebkitBackgroundClip: 'text', 
                   WebkitTextFillColor: 'transparent',
-                  fontSize: '4.5rem',
+                  fontSize: 'clamp(2rem, 6vw, 4.5rem)',
                   letterSpacing: '2px',
                   display: 'inline-block',
                   margin: '10px 0'
@@ -55,13 +56,13 @@ export default function Home() {
                 </span>
               </h1>
               
-              <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '1.15rem', lineHeight: '1.6', marginBottom: '35px', maxWidth: '550px' }}>
+              <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: 'clamp(0.9rem, 2.5vw, 1.15rem)', lineHeight: '1.6', marginBottom: '30px', maxWidth: '550px', margin: '0 auto 30px' }}>
                 Plataforma web de resguardo documental de alto nivel. Protege, organiza y comparte contratos y archivos confidenciales mediante cifrado avanzado y tokens de verificación por correo.
               </p>
 
-              <div className="hero-actions" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <Link to="/registro" className="btn btn-primary" style={{ padding: '14px 28px', fontWeight: 'bold' }}>Comenzar ahora</Link>
-                <Link to="/login" className="btn btn-secondary" style={{ padding: '14px 28px', border: '1px solid rgba(255,255,255,0.1)' }}>Ya tengo cuenta</Link>
+              <div className="hero-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Link to="/registro" className="btn btn-primary" style={{ padding: 'clamp(10px 20px, 2vw, 14px 28px)', fontWeight: 'bold', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>Comenzar ahora</Link>
+                <Link to="/login" className="btn btn-secondary" style={{ padding: 'clamp(10px 20px, 2vw, 14px 28px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>Ya tengo cuenta</Link>
               </div>
             </div>
 
@@ -71,7 +72,7 @@ export default function Home() {
               <img 
                 src="/assets2/img/security-main.png" 
                 alt="Seguridad digital y protección de archivos" 
-                style={{ width: '100%', maxWidth: '480px', height: 'auto', objectFit: 'contain', position: 'relative', zIndex: 2 }}
+                style={{ width: '100%', maxWidth: '420px', height: 'auto', objectFit: 'contain', position: 'relative', zIndex: 2 }}
               />
             </div>
 
@@ -81,50 +82,50 @@ export default function Home() {
         {/* =======================================================
             SECCIÓN CARACTERÍSTICAS (Grid Limpio Antidesparrame)
            ======================================================= */}
-        <section className="features section reveal" style={{ padding: '60px 0', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-          <div className="container features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px', width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 20px', alignItems: 'center' }}>
+        <section className="features section reveal" style={{ padding: '50px 0', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+          <div className="container features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 16px', alignItems: 'stretch' }}>
             
-            <div className="features-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+            <div className="features-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
               
               {/* Contenedor 1 con Luz + Plop */}
               <div className="feature-card feature-title-card card-glow-plop" style={{ 
-                padding: '2rem', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #0a3fff', 
+                padding: 'clamp(15px, 3vw, 2rem)', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #0a3fff', 
                 boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)', cursor: 'pointer'
               }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'white', margin: 0 }}>Características Destacadas</h2>
+                <h2 style={{ fontSize: 'clamp(1.3rem, 4vw, 1.8rem)', fontWeight: '700', color: 'white', margin: 0 }}>Características Destacadas</h2>
               </div>
 
               {/* Tarjeta 1 */}
-              <div style={{ display: 'flex', gap: '15px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ fontSize: '1.5rem', color: '#faad14', marginTop: '3px' }}><FaShieldAlt /></div>
+              <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '1.2rem', color: '#faad14', marginTop: '2px', flexShrink: 0 }}><FaShieldAlt /></div>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: '0 0 6px 0' }}>Cifrado AES-256 local</h3>
-                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>Tus archivos se encriptan simétricamente en el cliente antes de ser transferidos.</p>
+                  <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', fontWeight: '600', margin: '0 0 4px 0' }}>Cifrado AES-256 local</h3>
+                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', margin: 0, lineHeight: '1.4' }}>Tus archivos se encriptan simétricamente en el cliente antes de ser transferidos.</p>
                 </div>
               </div>
 
               {/* Tarjeta 2 */}
-              <div style={{ display: 'flex', gap: '15px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ fontSize: '1.5rem', color: '#0a3fff', marginTop: '3px' }}><FaUserLock /></div>
+              <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '1.2rem', color: '#0a3fff', marginTop: '2px', flexShrink: 0 }}><FaUserLock /></div>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: '0 0 6px 0' }}>Autenticación por Correo</h3>
-                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>Agrega un token de un solo uso.</p>
+                  <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', fontWeight: '600', margin: '0 0 4px 0' }}>Autenticación por Correo</h3>
+                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', margin: 0, lineHeight: '1.4' }}>Agrega un token de un solo uso.</p>
                 </div>
               </div>
 
               {/* Tarjeta 3 */}
-              <div style={{ display: 'flex', gap: '15px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ fontSize: '1.5rem', color: '#52c41a', marginTop: '3px' }}><FaKey /></div>
+              <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '1.2rem', color: '#52c41a', marginTop: '2px', flexShrink: 0 }}><FaKey /></div>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: '0 0 6px 0' }}>Políticas de Acceso Robustas</h3>
-                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>Configura restricciones avanzadas decidiendo entre permisos de descarga completa o solo lectura (vista previa).</p>
+                  <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', fontWeight: '600', margin: '0 0 4px 0' }}>Políticas de Acceso Robustas</h3>
+                  <p style={{ color: 'var(--color-text-medium, #8892b0)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', margin: 0, lineHeight: '1.4' }}>Configura restricciones avanzadas decidiendo entre permisos de descarga completa o solo lectura (vista previa).</p>
                 </div>
               </div>
 
             </div>
 
-            <div className="features-image" style={{ display: 'flex', justifyContent: 'center' }}>
-              <img src="/assets2/img/security-shield.jpg" alt="Escudo de seguridad digital" style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', boxShadow: 'var(--shadow-medium)' }} />
+            <div className="features-image" style={{ display: 'flex', justifyContent: 'center', order: -1 }}>
+              <img src="/assets2/img/security-shield.jpg" alt="Escudo de seguridad digital" style={{ width: '100%', maxWidth: '400px', borderRadius: '16px', boxShadow: 'var(--shadow-medium)' }} />
             </div>
           </div>
         </section>
@@ -132,41 +133,41 @@ export default function Home() {
         {/* =======================================================
             SECCIÓN CÓMO FUNCIONA (Conectores Elásticos)
            ======================================================= */}
-        <section className="how-it-works section reveal" style={{ padding: '60px 0' }}>
-          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 20px' }}>
-            <div className="section-heading dark" style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700' }}>¿Cómo funciona?</h2>
-              <p style={{ color: 'var(--color-text-medium)' }}>Usa el ecosistema de resguardo en tres pasos simples.</p>
+        <section className="how-it-works section reveal" style={{ padding: '50px 0' }}>
+          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 16px' }}>
+            <div className="section-heading dark" style={{ textAlign: 'center', marginBottom: '35px' }}>
+              <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: '700', margin: '0 0 10px 0' }}>¿Cómo funciona?</h2>
+              <p style={{ color: 'var(--color-text-medium)', margin: '0', fontSize: 'clamp(0.9rem, 2.5vw, 1rem)' }}>Usa el ecosistema de resguardo en tres pasos simples.</p>
             </div>
 
             {/* Contenedor 2 con Luz + Plop */}
             <div className="steps-grid card-glow-plop" style={{ 
-              padding: '35px 25px', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #ffffff', 
+              padding: 'clamp(20px, 4vw, 35px)', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #ffffff', 
               boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)', cursor: 'pointer',
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '30px'
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px'
             }}>
-              <article className="step-card" style={{ textAlign: 'center' }}>
-                <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyBox: 'center', justifyContent: 'center', margin: '0 auto 15px', fontWeight: '700', fontSize: '1.2rem', color: 'var(--color-accent)' }}>
-                  <FaUpload style={{ fontSize: '0.95rem' }} />
+              <article className="step-card" style={{ textAlign: 'center', padding: '15px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontWeight: '700', fontSize: '1rem', color: 'var(--color-accent)' }}>
+                  <FaUpload style={{ fontSize: '0.9rem' }} />
                 </div>
-                <h3 style={{ fontSize: '1.15rem', marginBottom: '8px' }}>1. Carga Documentos</h3>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Sube múltiples contratos o archivos confidenciales dentro de tu raíz o carpetas.</p>
+                <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.15rem)', marginBottom: '8px', margin: '0 0 8px 0' }}>1. Carga Documentos</h3>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Sube múltiples contratos o archivos confidenciales dentro de tu raíz o carpetas.</p>
               </article>
 
-              <article className="step-card" style={{ textAlign: 'center' }}>
-                <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyBox: 'center', justifyContent: 'center', margin: '0 auto 15px', fontWeight: '700', fontSize: '1.2rem', color: 'var(--color-accent)' }}>
-                  <FaUserCheck style={{ fontSize: '0.95rem' }} />
+              <article className="step-card" style={{ textAlign: 'center', padding: '15px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontWeight: '700', fontSize: '1rem', color: 'var(--color-accent)' }}>
+                  <FaUserCheck style={{ fontSize: '0.9rem' }} />
                 </div>
-                <h3 style={{ fontSize: '1.15rem', marginBottom: '8px' }}>2. Configura Políticas</h3>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Define el nivel de privacidad asimétrica, tiempo de vida y el teléfono destino.</p>
+                <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.15rem)', marginBottom: '8px', margin: '0 0 8px 0' }}>2. Configura Políticas</h3>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Define el nivel de privacidad asimétrica, tiempo de vida y el teléfono destino.</p>
               </article>
 
-              <article className="step-card" style={{ textAlign: 'center' }}>
-                <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyBox: 'center', justifyContent: 'center', margin: '0 auto 15px', fontWeight: '700', fontSize: '1.2rem', color: 'var(--color-accent)' }}>
-                  <FaShareAlt style={{ fontSize: '0.95rem' }} />
+              <article className="step-card" style={{ textAlign: 'center', padding: '15px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--color-dark)', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontWeight: '700', fontSize: '1rem', color: 'var(--color-accent)' }}>
+                  <FaShareAlt style={{ fontSize: '0.9rem' }} />
                 </div>
-                <h3 style={{ fontSize: '1.15rem', marginBottom: '8px' }}>3. Envío Cifrado</h3>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Comparte de forma controlada a distintos miembros.</p>
+                <h3 style={{ fontSize: 'clamp(0.95rem, 2vw, 1.15rem)', marginBottom: '8px', margin: '0 0 8px 0' }}>3. Envío Cifrado</h3>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Comparte de forma controlada a distintos miembros.</p>
               </article>
             </div>
           </div>
@@ -175,32 +176,32 @@ export default function Home() {
         {/* =======================================================
             SECCIÓN BENEFICIOS (Distribución Balanceada)
            ======================================================= */}
-        <section className="benefits section reveal" style={{ padding: '60px 0' }}>
-          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 20px' }}>
-            <div className="section-heading" style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700' }}>¿Por qué usar CAPARA?</h2>
-              <p style={{ color: 'var(--color-text-medium)' }}>Diseñada con altos estándares académicos.</p>
+        <section className="benefits section reveal" style={{ padding: '50px 0' }}>
+          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 16px' }}>
+            <div className="section-heading" style={{ textAlign: 'center', marginBottom: '35px' }}>
+              <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: '700', margin: '0 0 10px 0' }}>¿Por qué usar CAPARA?</h2>
+              <p style={{ color: 'var(--color-text-medium)', margin: '0', fontSize: 'clamp(0.9rem, 2.5vw, 1rem)' }}>Diseñada con altos estándares académicos.</p>
             </div>
 
             {/* Contenedor 3 con Luz + Plop */}
             <div className="benefits-grid card-glow-plop" style={{ 
-              padding: '35px', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #0a3fff', 
+              padding: 'clamp(20px, 4vw, 35px)', backgroundColor: '#1D263C', borderRadius: '15px', border: '1px solid #0a3fff', 
               boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)', cursor: 'pointer',
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '25px'
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px'
             }}>
-              <article className="benefit-box" style={{ textAlign: 'left' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--color-accent)' }}>Auditoría e Historial</h4>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Monitorea el estatus de tus transferencias mediante el panel dinámico de logs vencidos.</p>
+              <article className="benefit-box" style={{ textAlign: 'left', padding: '10px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', color: 'var(--color-accent)' }}>Auditoría e Historial</h4>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Monitorea el estatus de tus transferencias mediante el panel dinámico de logs vencidos.</p>
               </article>
 
-              <article className="benefit-box" style={{ textAlign: 'left' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--color-accent)' }}>Clasificación por Nivel</h4>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Organiza tus expedientes usando carpetas personalizadas según su nivel de criticidad.</p>
+              <article className="benefit-box" style={{ textAlign: 'left', padding: '10px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', color: 'var(--color-accent)' }}>Clasificación por Nivel</h4>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Organiza tus expedientes usando carpetas personalizadas según su nivel de criticidad.</p>
               </article>
 
-              <article className="benefit-box" style={{ textAlign: 'left' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--color-accent)' }}>Control Inbound / Outbound</h4>
-                <p style={{ color: 'var(--color-text-medium)', fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>Separa claramente los flujos de archivos recibidos mediante notificaciones push en tiempo real.</p>
+              <article className="benefit-box" style={{ textAlign: 'left', padding: '10px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: 'clamp(0.95rem, 2vw, 1.1rem)', color: 'var(--color-accent)' }}>Control Inbound / Outbound</h4>
+                <p style={{ color: 'var(--color-text-medium)', fontSize: 'clamp(0.8rem, 2vw, 0.88rem)', margin: 0, lineHeight: '1.4' }}>Separa claramente los flujos de archivos recibidos mediante notificaciones push en tiempo real.</p>
               </article>
 
             </div>
@@ -210,22 +211,22 @@ export default function Home() {
         {/* =======================================================
             SECCIÓN CALL TO ACTION (Fijo Centralizado)
            ======================================================= */}
-        <section className="cta section reveal" style={{ padding: '40px 0 80px 0' }}>
-          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 20px' }}>
+        <section className="cta section reveal" style={{ padding: '40px 0 60px 0' }}>
+          <div className="container" style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 16px' }}>
             
             {/* Contenedor 4 con Luz + Plop */}
             <div className="cta-box card-glow-plop" style={{ 
-              padding: '40px', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #ffffff', 
+              padding: 'clamp(20px, 4vw, 40px)', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #ffffff', 
               boxShadow: 'var(--shadow-medium), 0 0 20px rgba(10, 63, 255, 0.4)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '30px', textAlign: 'left'
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px', textAlign: 'center'
             }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '700' }}>Empieza a proteger tus archivos hoy</h2>
-                <p style={{ margin: '8px 0 0 0', color: 'var(--color-text-medium)', fontSize: '0.95rem' }}>Crea una cuenta y comienza a usar una plataforma confiable para gestionar tu información.</p>
+              <div style={{ flex: '1', minWidth: '100%', order: 1 }}>
+                <h2 style={{ margin: '0 0 10px 0', fontSize: 'clamp(1.2rem, 4vw, 1.6rem)', fontWeight: '700' }}>Empieza a proteger tus archivos hoy</h2>
+                <p style={{ margin: '0', color: 'var(--color-text-medium)', fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)' }}>Crea una cuenta y comienza a usar una plataforma confiable para gestionar tu información.</p>
               </div>
-              <div className="cta-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <Link to="/registro" className="btn btn-primary" style={{ padding: '12px 30px', fontWeight: 'bold' }}>Crear cuenta</Link>
-                <Link to="/terminos-condiciones" style={{ fontSize: '0.8rem', color: 'var(--color-text-medium)', textDecoration: 'underline', textAlign: 'center' }}>
+              <div className="cta-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
+                <Link to="/registro" className="btn btn-primary" style={{ padding: 'clamp(10px 20px, 2vw, 12px 30px)', fontWeight: 'bold', fontSize: 'clamp(0.85rem, 2vw, 1rem)', width: 'fit-content' }}>Crear cuenta</Link>
+                <Link to="/terminos-condiciones" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.8rem)', color: 'var(--color-text-medium)', textDecoration: 'underline', textAlign: 'center' }}>
                   Aviso de Privacidad y Términos
                 </Link>
               </div>

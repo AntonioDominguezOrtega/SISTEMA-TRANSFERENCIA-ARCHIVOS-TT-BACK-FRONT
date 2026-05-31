@@ -269,9 +269,15 @@ export default function Login() {
                       background: 'transparent',
                       color: 'var(--color-text-medium)',
                       cursor: 'pointer',
-                      padding: 0,
-                      fontSize: '1rem'
+                      padding: '4px 8px',
+                      fontSize: '1.1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'color 0.2s'
                     }}
+                    onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'}
+                    onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}
                   >
                     {showLoginPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
@@ -342,9 +348,15 @@ export default function Login() {
                         background: 'transparent',
                         color: 'var(--color-text-medium)',
                         cursor: 'pointer',
-                        padding: 0,
-                        fontSize: '1rem'
+                        padding: '4px 8px',
+                        fontSize: '1.1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.2s'
                       }}
+                      onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'}
+                      onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}
                     >
                       {showRegPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
@@ -370,9 +382,15 @@ export default function Login() {
                         background: 'transparent',
                         color: 'var(--color-text-medium)',
                         cursor: 'pointer',
-                        padding: 0,
-                        fontSize: '1rem'
+                        padding: '4px 8px',
+                        fontSize: '1.1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.2s'
                       }}
+                      onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'}
+                      onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}
                     >
                       {showRegConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
