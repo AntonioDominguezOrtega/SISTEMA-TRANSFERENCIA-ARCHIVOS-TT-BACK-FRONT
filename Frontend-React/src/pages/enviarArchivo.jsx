@@ -12,8 +12,9 @@ import searchService from '../services/searchService';
 import { 
   FaUpload, FaLock, FaShieldAlt, FaGlobe, FaChevronLeft, 
   FaFileAlt, FaUserPlus, FaClock, FaSpinner, FaCloud, 
-  FaEye, FaDownload, FaTimes, FaSearch, FaKey, FaEnvelope, FaUser
+  FaEye, FaEyeSlash, FaDownload, FaTimes, FaSearch, FaKey, FaEnvelope, FaUser
 } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 // Helper para obtener iniciales
 const getInitials = (nombre, apellido) => {
@@ -53,6 +54,7 @@ export default function EnviarArchivo() {
   const [security, setSecurity] = useState('PUBLIC');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [useAccountPhone, setUseAccountPhone] = useState(true);
   const [customPhoneNumber, setCustomPhoneNumber] = useState('');
   
@@ -645,10 +647,27 @@ export default function EnviarArchivo() {
           {/* Contraseña */}
           {security === 'PASSWORD' && (
             <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(250, 173, 20, 0.05)', borderLeft: '4px solid #faad14', borderRadius: '4px' }}>
-              <input type="password" placeholder="Contraseña (mínimo 8 caracteres)" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Contraseña (mínimo 8 caracteres)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                />
+                <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
+              </div>
+
               <input type="password" placeholder="Confirmar contraseña" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: confirmPassword && password !== confirmPassword ? '1px solid #ff4d4f' : '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {confirmPassword && password !== confirmPassword && <span style={{ color: '#ff4d4f', fontSize: '0.75rem', marginTop: '5px' }}>❌ Las contraseñas no coinciden</span>}
               {confirmPassword && password === confirmPassword && password.length >= 8 && <span style={{ color: '#52c41a', fontSize: '0.75rem', marginTop: '5px' }}>✅ Coinciden</span>}
+              {password && getPasswordErrors(password).length > 0 && (
+                <div style={{ marginTop: '8px', color: '#ffcc66', fontSize: '0.85rem' }}>
+                  {getPasswordErrors(password).map((p, i) => <div key={i}>• {p}</div>)}
+                </div>
+              )}
             </div>
           )}
           {/* 8. NOTIFICACIONES */}

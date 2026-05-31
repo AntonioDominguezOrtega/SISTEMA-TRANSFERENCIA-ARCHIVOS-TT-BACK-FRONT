@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import Footer from '../components/Footer'
 import authService from '../services/authService'
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 export default function RegistroUsuario() {
   const navigate = useNavigate();
@@ -43,19 +45,7 @@ export default function RegistroUsuario() {
     return error.message || fallback;
   };
 
-  const validatePassword = (password) => {
-    const errors = [];
-    if (password.length < 8) {
-      errors.push('La contraseña debe tener más de 8 caracteres.');
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Debe contener al menos una letra mayúscula.');
-    }
-    if (!/[0-9]/.test(password)) {
-      errors.push('Debe contener al menos un número.');
-    }
-    return errors;
-  };
+  const validatePassword = (password) => getPasswordErrors(password);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });

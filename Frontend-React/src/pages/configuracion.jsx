@@ -172,7 +172,8 @@ export default function Configuracion() {
                       name="username"
                       className="form-control-modern" 
                       value={formData.username}
-                      onChange={handleInputChange}
+                      disabled
+                      style={{ cursor: 'not-allowed', backgroundColor: '#f0f0f0', color: '#666' }}
                     />
                   </div>
                 </div>
@@ -186,12 +187,13 @@ export default function Configuracion() {
                       name="email"
                       className="form-control-modern" 
                       value={formData.email}
-                      onChange={handleInputChange}
+                      disabled
+                      style={{ cursor: 'not-allowed', backgroundColor: '#f0f0f0', color: '#666' }}
                     />
                   </div>
                 </div>
 
-                <button 
+             { /*  <button 
                   type="button" 
                   className="btn btn-secondary" 
                   style={{ width: '100%', marginTop: '1rem' }}
@@ -200,6 +202,7 @@ export default function Configuracion() {
                 >
                   {guardando ? 'Actualizando...' : 'Actualizar Perfil'}
                 </button>
+                */}
               </form>
             </section>
 

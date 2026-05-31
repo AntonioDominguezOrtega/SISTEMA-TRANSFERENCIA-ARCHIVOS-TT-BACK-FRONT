@@ -4,6 +4,8 @@ import PublicHeader from '../components/PublicHeader'
 import PrivateHeader from '../components/PrivateHeader' 
 import Footer from '../components/Footer'
 import authService from '../services/authService'
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 // 🌟 FUNCIONES DE ENMASCARAMIENTO (MÁSCARA DE SEGURIDAD)
 const enmascararEmail = (email) => {
@@ -34,6 +36,8 @@ export default function RecuperacionContrasena() {
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -83,8 +87,9 @@ export default function RecuperacionContrasena() {
       return;
     }
     
-    if (newPassword.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    const passwordErrors = getPasswordErrors(newPassword);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors.join(' '));
       return;
     }
     
@@ -315,33 +320,39 @@ export default function RecuperacionContrasena() {
                 </small>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label" style={{ color: 'white' }}>Nueva Contraseña</label>
                 <input 
-                  type="password" 
+                  type={showNewPassword ? 'text' : 'password'} 
                   className="form-control-modern" 
                   placeholder="••••••••" 
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ paddingLeft: '15px' }}
+                  style={{ paddingLeft: '15px', paddingRight: '46px' }}
                 />
+                <button type="button" onClick={() => setShowNewPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '38px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showNewPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
                 <small style={{ color: 'var(--color-text-medium)', fontSize: '0.7rem', marginTop: '4px', display: 'block' }}>
-                  Mínimo 6 caracteres
+                  Mínimo 8 caracteres, una mayúscula y un número
                 </small>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label" style={{ color: 'white' }}>Confirmar Nueva Contraseña</label>
                 <input 
-                  type="password" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
                   className="form-control-modern" 
                   placeholder="••••••••" 
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ paddingLeft: '15px' }}
+                  style={{ paddingLeft: '15px', paddingRight: '46px' }}
                 />
+                <button type="button" onClick={() => setShowConfirmPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '38px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isLoading}>

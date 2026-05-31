@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { 
   FaFileAlt, FaShieldAlt, FaLock, FaUnlock, 
-  FaEnvelope, FaDownload, FaEye, FaTrash, 
+  FaEnvelope, FaDownload, FaEye, FaEyeSlash, FaTrash, 
   FaStar, FaRegStar
 } from 'react-icons/fa';
 import { 
@@ -29,6 +29,7 @@ const FileDetailPanel = ({
   const [desbloqueando, setDesbloqueando] = useState(false);
   const [localTokenSms, setLocalTokenSms] = useState('');
   const [localPassword, setLocalPassword] = useState('');
+  const [showLocalPassword, setShowLocalPassword] = useState(false);
   const [panelMessage, setPanelMessage] = useState({ type: null, text: null });
 
   useEffect(() => {
@@ -390,22 +391,28 @@ const FileDetailPanel = ({
             
             {file.securityLevel === 'PASSWORD' && (
               <>
-                <input 
-                  type="password"
-                  placeholder="Contraseña del archivo"
-                  value={localPassword}
-                  onChange={(e) => setLocalPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    marginBottom: '12px',
-                    backgroundColor: '#0D1425',
-                    color: 'white',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    fontSize: '0.85rem'
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showLocalPassword ? 'text' : 'password'}
+                    placeholder="Contraseña del archivo"
+                    value={localPassword}
+                    onChange={(e) => setLocalPassword(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      marginBottom: '12px',
+                      backgroundColor: '#0D1425',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      paddingRight: '46px'
+                    }}
+                  />
+                  <button type="button" onClick={() => setShowLocalPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                    {showLocalPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                </div>
                 
                 <button 
                   onClick={handleVerificarPassword}

@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import Footer from '../components/Footer'
 import authService from '../services/authService'  // ← AGREGAR
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 const isValidIdentifier = (val) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -10,19 +12,8 @@ const isValidIdentifier = (val) => {
   return emailRegex.test(val.trim()) || userRegex.test(val.trim());
 };
 const isValidPassword = (password) => password.trim().length >= 6;
-const getRegistrationPasswordErrors = (password) => {
-  const errors = [];
-  if (password.length < 8) {
-    errors.push('La contraseña debe tener más de 8 caracteres.');
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Debe contener al menos una letra mayúscula.');
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push('Debe contener al menos un número.');
-  }
-  return errors;
-};
+// registration password rules are reused from utils
+const getRegistrationPasswordErrors = (password) => getPasswordErrors(password);
 
 export default function Login() {
   const navigate = useNavigate();
@@ -282,7 +273,7 @@ export default function Login() {
                       fontSize: '1rem'
                     }}
                   >
-                    {showLoginPassword ? '👁️' : '👁️‍🗨️'}
+                    {showLoginPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
                   {passwordError && <p className="error-text-slide">{passwordError}</p>}
                 </div>
@@ -355,7 +346,7 @@ export default function Login() {
                         fontSize: '1rem'
                       }}
                     >
-                      {showRegPassword ? '👁️' : '👁️‍🗨️'}
+                      {showRegPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
                   <div style={{ position: 'relative' }}>
@@ -383,7 +374,7 @@ export default function Login() {
                         fontSize: '1rem'
                       }}
                     >
-                      {showRegConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                      {showRegConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
                 </div>

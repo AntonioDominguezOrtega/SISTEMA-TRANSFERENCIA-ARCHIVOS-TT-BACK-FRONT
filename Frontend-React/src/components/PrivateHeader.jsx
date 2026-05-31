@@ -48,6 +48,7 @@ export default function PrivateHeader({ toggleSidebar }) {
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false); // <-- NUEVO ESTADO PARA CONTROLAR EXPANSIÓN
+  const [isMobile, setIsMobile] = useState(false);
   const searchRef = useRef(null);
   
   // Estados de notificaciones
@@ -168,6 +169,10 @@ export default function PrivateHeader({ toggleSidebar }) {
   // CERRAR MENÚS AL CLICAR FUERA
   // ============================================================
   useEffect(() => {
+    const updateIsMobile = () => setIsMobile(window.innerWidth <= 850);
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    
     const handleClickOutside = (event) => {
       // Manejo del buscador: cerrar sugerencias y colapsar si está vacío
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -192,7 +197,10 @@ export default function PrivateHeader({ toggleSidebar }) {
     };
     
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', updateIsMobile);
+    };
   }, [showNotifications, unreadCount, searchTerm]);
 
   // ============================================================
@@ -329,7 +337,7 @@ export default function PrivateHeader({ toggleSidebar }) {
     <header className={`private-header ${scrolled ? 'header-scrolled' : ''} private-header-fixed`}>
       
       {/* LEFT: Logo y menú */}
-      <div className="private-header-left" style={{ display: isSearchOpen ? 'none' : 'flex' }}>
+      <div className="private-header-left" style={{ display: (isMobile && isSearchOpen) ? 'none' : 'flex' }}>
         <button className="menu-toggle-btn" onClick={toggleSidebar}>
           <FaBars />
         </button>
@@ -347,21 +355,48 @@ export default function PrivateHeader({ toggleSidebar }) {
         className="private-header-center"
         ref={searchRef}
       >
-        {!isSearchOpen ? (
-          <button 
-            className="icon-btn header-search-toggle" 
-            onClick={() => setIsSearchOpen(true)}
-            style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              color: 'var(--color-text-medium, #A0ABC0)', 
-              fontSize: '1.2rem', 
-              cursor: 'pointer',
-              padding: '10px'
-            }}
-          >
-            <FaSearch />
-          </button>
+        {isMobile ? (
+          !isSearchOpen ? (
+            <button 
+              className="icon-btn header-search-toggle" 
+              onClick={() => setIsSearchOpen(true)}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: 'var(--color-text-medium, #A0ABC0)', 
+                fontSize: '1.2rem', 
+                cursor: 'pointer',
+                padding: '10px'
+              }}
+            >
+              <FaSearch />
+            </button>
+          ) : (
+            <form 
+              className="header-search" 
+              onSubmit={handleSearchSubmit} 
+              style={{ 
+                width: '100%', 
+                maxWidth: '600px', 
+                display: 'flex',
+                animation: 'fadeIn 0.2s ease-in-out'
+              }}
+            >
+              <input 
+                autoFocus
+                type="text" 
+                className="header-search-input"
+                placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => { if(searchTerm.trim().length >= 2) setShowResults(true) }}
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="header-search-btn">
+                <FaSearch />
+              </button>
+            </form>
+          )
         ) : (
           <form 
             className="header-search" 
@@ -374,7 +409,6 @@ export default function PrivateHeader({ toggleSidebar }) {
             }}
           >
             <input 
-              autoFocus
               type="text" 
               className="header-search-input"
               placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
@@ -430,7 +464,7 @@ export default function PrivateHeader({ toggleSidebar }) {
       </div>
 
       {/* RIGHT: Notificaciones y Usuario */}
-      <div className="private-header-right" style={{ display: isSearchOpen ? 'none' : 'flex' }}>
+      <div className="private-header-right" style={{ display: (isMobile && isSearchOpen) ? 'none' : 'flex' }}>
         
         {/* NOTIFICACIONES */}
         <div className="notifications-wrapper" ref={notificationsRef}>
