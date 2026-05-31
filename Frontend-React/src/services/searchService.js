@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_URL = 'https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net/api/';
 
 const authHeader = () => {
   const user = JSON.parse(localStorage.getItem('user')); 
