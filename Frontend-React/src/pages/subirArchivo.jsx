@@ -315,7 +315,7 @@ export default function SubirArchivo() {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', border: security === 'TOKEN_SMS' ? '2px solid #0a3fff' : '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', cursor: 'pointer', backgroundColor: security === 'TOKEN_SMS' ? 'rgba(10, 63, 255, 0.05)' : 'transparent' }}>
                 <input type="radio" name="security" value="TOKEN_SMS" checked={security === 'TOKEN_SMS'} onChange={() => setSecurity('TOKEN_SMS')} style={{ width: '18px', height: '18px', accentColor: '#0a3fff' }} />
-                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por SMS</strong><br /><small>Requiere código OTP enviado por SMS</small></div>
+                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por Correo</strong><br /></div>
               </label>
             </div>
           </div>
@@ -325,18 +325,6 @@ export default function SubirArchivo() {
             <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(250, 173, 20, 0.05)', borderLeft: '4px solid #faad14', borderRadius: '4px' }}>
               <input type="password" placeholder="Contraseña (mínimo 8 caracteres)" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               <input type="password" placeholder="Confirmar contraseña" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-            </div>
-          )}
-
-          {/* SMS */}
-          {security === 'TOKEN_SMS' && (
-            <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(82, 196, 26, 0.05)', borderLeft: '4px solid #52c41a', borderRadius: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <input type="checkbox" checked={useAccountPhone} onChange={(e) => setUseAccountPhone(e.target.checked)} /> Usar mi número registrado
-              </label>
-              {!useAccountPhone && (
-                <input type="tel" placeholder="+52 55 1234 5678" value={customPhoneNumber} onChange={(e) => setCustomPhoneNumber(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-              )}
             </div>
           )}
 

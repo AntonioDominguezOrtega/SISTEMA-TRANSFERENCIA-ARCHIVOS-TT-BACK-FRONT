@@ -172,7 +172,8 @@ export default function Configuracion() {
                       name="username"
                       className="form-control-modern" 
                       value={formData.username}
-                      onChange={handleInputChange}
+                      disabled
+                      style={{ cursor: 'not-allowed', backgroundColor: '#f0f0f0', color: '#666' }}
                     />
                   </div>
                 </div>
@@ -186,12 +187,13 @@ export default function Configuracion() {
                       name="email"
                       className="form-control-modern" 
                       value={formData.email}
-                      onChange={handleInputChange}
+                      disabled
+                      style={{ cursor: 'not-allowed', backgroundColor: '#f0f0f0', color: '#666' }}
                     />
                   </div>
                 </div>
 
-                <button 
+             { /*  <button 
                   type="button" 
                   className="btn btn-secondary" 
                   style={{ width: '100%', marginTop: '1rem' }}
@@ -200,91 +202,8 @@ export default function Configuracion() {
                 >
                   {guardando ? 'Actualizando...' : 'Actualizar Perfil'}
                 </button>
+                */}
               </form>
-            </section>
-
-            {/* SECCIÓN 2: SEGURIDAD Y MFA (SMS) */}
-            <section className="benefit-box shadow-sm" style={{ borderLeft: '4px solid var(--accent-color, #0A3FFF)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0 }}>Seguridad y Autenticación</h3>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Número Celular para SMS</label>
-                
-                {/* RENDERIZADO CONDICIONAL DEL FLUJO DE TELÉFONO */}
-                
-                {pasoTelefono === 0 && (
-                  // PASO 0: Muestra el teléfono actual y botón Cambiar
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="input-wrapper" style={{ flex: 1 }}>
-                      <input 
-                        type="tel" 
-                        className="form-control-modern" 
-                        value={datosOriginales?.phone || "No registrado"} 
-                        disabled
-                        style={{ cursor: 'not-allowed', backgroundColor: '#f0f0f0', color: '#666' }}
-                      />
-                    </div>
-                    <button type="button" className="btn btn-primary" onClick={() => setPasoTelefono(1)}>
-                      Cambiar
-                    </button>
-                  </div>
-                )}
-
-                {pasoTelefono === 1 && (
-                  // PASO 1: Pide el nuevo número y envía el SMS
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div className="input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
-                      <input 
-                        type="tel" 
-                        className="form-control-modern" 
-                        placeholder="Ej. 5511223344" 
-                        value={nuevoTelefono}
-                        onChange={(e) => setNuevoTelefono(e.target.value)}
-                        disabled={procesandoSms}
-                      />
-                    </div>
-                    <button type="button" className="btn btn-primary" onClick={handleEnviarSms} disabled={procesandoSms}>
-                      {procesandoSms ? 'Enviando...' : 'Enviar Código'}
-                    </button>
-                    <button type="button" className="btn" style={{ backgroundColor: '#e2e8f0' }} onClick={() => setPasoTelefono(0)} disabled={procesandoSms}>
-                      Cancelar
-                    </button>
-                  </div>
-                )}
-
-                {pasoTelefono === 2 && (
-                  // PASO 2: Pide el token SMS que llegó al celular
-                  <div>
-                    <p style={{ fontSize: '0.85rem', color: '#2563eb', marginBottom: '0.5rem' }}>
-                      Se ha enviado un SMS a <strong>{nuevoTelefono}</strong>
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <div className="input-wrapper" style={{ flex: 1, minWidth: '150px' }}>
-                        <input 
-                          type="text" 
-                          className="form-control-modern" 
-                          placeholder="Ingresa el Token" 
-                          value={codigoSms}
-                          onChange={(e) => setCodigoSms(e.target.value)}
-                          disabled={procesandoSms}
-                        />
-                      </div>
-                      <button type="button" className="btn btn-secondary" onClick={handleVerificarSms} disabled={procesandoSms}>
-                        {procesandoSms ? 'Verificando...' : 'Verificar y Guardar'}
-                      </button>
-                      <button type="button" className="btn" style={{ backgroundColor: '#e2e8f0' }} onClick={() => setPasoTelefono(0)} disabled={procesandoSms}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <small className="form-help" style={{ display: 'block', marginTop: '0.8rem' }}>
-                  Utilizado para el envío de tokens de cifrado vía Azure.
-                </small>
-              </div>
             </section>
 
             {/* SECCIÓN 3: CAMBIO DE CONTRASEÑA (Integrada) */}

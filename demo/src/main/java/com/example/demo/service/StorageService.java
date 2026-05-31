@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.crypto.SecretKey;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -214,9 +215,6 @@ public class StorageService {
     }
 
     // ==============================================================
-    // 2. SUBIR ARCHIVOS PERSONALES
-    // ==============================================================
-
     @Transactional
     public StorageItemResponse uploadPersonalFile(PersonalFileUploadRequest request) {
         User currentUser = getCurrentUser();
@@ -230,63 +228,82 @@ public class StorageService {
         if (request.getParentFolderId() != null && !request.getParentFolderId().isEmpty()) {
             parentFolder = fileMetadataRepository.findById(request.getParentFolderId())
                     .orElseThrow(() -> new RuntimeException("Carpeta destino no encontrada"));
-
             if (!parentFolder.getUploadedBy().getId().equals(currentUser.getId())) {
                 throw new RuntimeException("No tienes permiso para subir aquí");
             }
-
             if (!parentFolder.getIsFolder()) {
                 throw new RuntimeException("El destino no es una carpeta");
             }
         }
 
         try {
-            // 1. Generar clave AES única para el archivo
-            var aesKey = encryptionService.generateAesKey();
+            // ==========================================================
+            // 1. LEER el archivo original
+            // ==========================================================
+            byte[] fileBytes = file.getBytes();
+
+            // ==========================================================
+            // 2. GENERAR clave AES y IV (Vector de Inicialización)
+            // ==========================================================
+            SecretKey aesKey = encryptionService.generateAesKey();
             byte[] iv = encryptionService.generateIv();
 
-            // ✅ 2. Generar nombre para el blob CON extensión
+            // ==========================================================
+            // 3. CIFRAR el contenido del archivo (¡EL PASO IMPORTANTE!)
+            // ==========================================================
+            String encryptedBase64 = encryptionService.encrypt(fileBytes, aesKey, iv);
+            byte[] encryptedBytes = Base64.getDecoder().decode(encryptedBase64);
+
+            // ==========================================================
+            // 4. SUBIR el archivo CIFRADO a Azure
+            // ==========================================================
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
             String blobName = UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + extension;
-            log.info("🔵 BlobName generado con extensión: {}", blobName);
 
-            String blobUrl = azureBlobService.uploadEncryptedFileWithName(file, "", iv, blobName);
-            log.info("🔵 BlobUrl recibido: {}", blobUrl);
+            // ¡Usamos el NUEVO método que solo sube datos cifrados!
+            String blobUrl = azureBlobService.uploadEncryptedData(encryptedBytes, blobName);
 
-            // 4. Guardar metadata
+            // ==========================================================
+            // 5. CIFRAR la clave AES con la llave maestra (Envelope Encryption)
+            // ==========================================================
+            String encryptedAesKey = encryptionService.encryptAesKey(aesKey);
+
+            // ==========================================================
+            // 6. GUARDAR metadata en la base de datos
+            // ==========================================================
             FileMetadata metadata = new FileMetadata();
             metadata.setFileName(file.getOriginalFilename());
             metadata.setFileType(file.getContentType());
             metadata.setFileSize(file.getSize());
             metadata.setBlobUrl(blobUrl);
             metadata.setContainerName("archivos-seguros");
-            metadata.setBlobPath(blobName);  // ← Usar el mismo blobName
-            log.info("🔵 BlobPath asignado: {}", metadata.getBlobPath());  // ← LOG PARA DEPURAR
-            metadata.setEncryptedAesKey(encryptionService.encryptAesKey(aesKey));
+            metadata.setBlobPath(blobName);
+            metadata.setEncryptedAesKey(encryptedAesKey);
             metadata.setIv(Base64.getEncoder().encodeToString(iv));
             metadata.setChecksum(generateChecksum(file));
             metadata.setUploadedBy(currentUser);
             metadata.setUploadedAt(LocalDateTime.now());
             metadata.setIsFolder(false);
-            metadata.setIsPersonal(true);  // Marcar como archivo personal
+            metadata.setIsPersonal(true);
             metadata.setParentFolder(parentFolder);
 
             FileMetadata savedMetadata = fileMetadataRepository.save(metadata);
 
-            // 5. Crear un FileShare "especial" para el propio usuario (para manejar seguridad)
-            // Esto permite reutilizar la lógica de desbloqueo existente
+            // ==========================================================
+            // 7. CREAR FileShare para manejar la seguridad (contraseña/token)
+            // ==========================================================
             createPersonalFileShare(savedMetadata, currentUser, request);
 
-            log.info("Archivo personal subido: '{}' por usuario: {}", file.getOriginalFilename(), currentUser.getUsername());
+            log.info("✅ Archivo personal CIFRADO y subido: '{}'", file.getOriginalFilename());
 
             return mapToStorageResponse(savedMetadata, currentUser);
 
         } catch (Exception e) {
-            log.error("Error al subir archivo personal: {}", e.getMessage());
+            log.error("❌ Error al subir archivo personal: {}", e.getMessage());
             throw new RuntimeException("Error al subir archivo: " + e.getMessage());
         }
     }
@@ -627,6 +644,7 @@ public class StorageService {
 
     /**
      * Compartir un archivo existente con otros usuarios
+     * Si ya existe un share activo, lo desactiva y crea uno nuevo con las nuevas credenciales
      */
     @Transactional
     public List<FileShareResponse> shareExistingFile(ShareExistingFileRequest request) {
@@ -660,13 +678,22 @@ public class StorageService {
         for (ShareExistingFileRequest.RecipientInfo recipient : request.getRecipients()) {
             User targetUser = findUserByIdentifier(recipient);
 
-            // Verificar si ya se compartió antes (evitar duplicados activos)
-            if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser)) {
-                log.warn("El archivo ya fue compartido con {} anteriormente", targetUser.getUsername());
-                continue;
-            }
+            // DESACTIVAR shares anteriores del mismo archivo con este usuario
+            log.info("🔄 Desactivando shares anteriores para usuario: {} con archivo: {}",
+                    targetUser.getUsername(), file.getFileName());
 
-            // Crear el nuevo FileShare
+            // Método 1: Usar consulta personalizada
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), targetUser);
+
+            // Método 2 (alternativa si el método de arriba no funciona):
+            // List<FileShare> existingShares = fileShareRepository
+            //         .findAllByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser);
+            // for (FileShare oldShare : existingShares) {
+            //     oldShare.setIsActive(false);
+            //     fileShareRepository.save(oldShare);
+            // }
+
+            // Crear el nuevo FileShare con las nuevas credenciales
             FileShare share = createShareFromExistingFile(file, currentUser, targetUser, request);
             FileShare savedShare = fileShareRepository.save(share);
 
@@ -675,20 +702,20 @@ public class StorageService {
 
             // Registrar en auditoría
             logAccess(currentUser, file, savedShare, AccessAction.SHARE, true,
-                    "Compartido con: " + targetUser.getEmail());
+                    "Compartido con: " + targetUser.getEmail() + " (nuevas credenciales)");
 
             responses.add(mapToFileShareResponse(savedShare));
         }
 
         // 4. Copia para sí mismo si lo solicitó
         if (request.getSendCopyToMyself() != null && request.getSendCopyToMyself()) {
-            // Verificar si ya existe un FileShare propio
-            if (!fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), currentUser)) {
-                FileShare selfShare = createShareFromExistingFile(file, currentUser, currentUser, request);
-                selfShare.setNotifyOnview(false);
-                selfShare.setNotifyOnDownload(false);
-                fileShareRepository.save(selfShare);
-            }
+            // Desactivar share anterior propio si existe
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), currentUser);
+
+            FileShare selfShare = createShareFromExistingFile(file, currentUser, currentUser, request);
+            selfShare.setNotifyOnview(false);
+            selfShare.setNotifyOnDownload(false);
+            fileShareRepository.save(selfShare);
         }
 
         return responses;
@@ -728,7 +755,7 @@ public class StorageService {
         share.setSharedBy(sharedBy);
         share.setSharedWith(sharedWith);
         share.setSubject(request.getSubject());
-        share.setMessage(request.getMessage());  // ← AGREGAR ESTA LÍNEA (si no existe)
+        share.setMessage(request.getMessage());
         share.setSharedAt(LocalDateTime.now());
         share.setExpiresAt(calculateExpiration(request.getExpirationTime()));
         share.setAccessLevel(request.getAccessLevel());
@@ -782,12 +809,13 @@ public class StorageService {
      * Calcular fecha de expiración
      */
     private LocalDateTime calculateExpiration(ShareExistingFileRequest.ExpirationTime expirationTime) {
+        if (expirationTime == null) return LocalDateTime.now().plusDays(30);
         return switch (expirationTime) {
             case HOURS_24 -> LocalDateTime.now().plusHours(24);
             case DAYS_3 -> LocalDateTime.now().plusDays(3);
             case DAYS_7 -> LocalDateTime.now().plusDays(7);
             case MONTH_1 -> LocalDateTime.now().plusMonths(1);
-            case CUSTOM -> LocalDateTime.now().plusDays(30); // Valor por defecto
+            case CUSTOM -> LocalDateTime.now().plusDays(30);
         };
     }
 
@@ -906,8 +934,26 @@ public class StorageService {
             throw new RuntimeException("No tienes acceso a este archivo");
         }
 
+        // Si no encuentra la configuración (archivos viejos), la crea automáticamente como PÚBLICA
         return fileShareRepository.findByFile_IdAndSharedWith(fileId, user)
-                .orElseThrow(() -> new RuntimeException("Archivo personal no configurado correctamente"));
+                .orElseGet(() -> {
+                    FileShare newShare = new FileShare();
+                    newShare.setFile(file);
+                    newShare.setSharedBy(user);
+                    newShare.setSharedWith(user);
+                    newShare.setSharedAt(file.getUploadedAt() != null ? file.getUploadedAt() : LocalDateTime.now());
+                    newShare.setExpiresAt(null); // No expira
+                    newShare.setAccessLevel(AccessLevel.DOWNLOAD);
+                    newShare.setSecurityLevel(SecurityLevel.PUBLIC);
+                    newShare.setNotifyOnview(false);
+                    newShare.setNotifyOnDownload(false);
+                    newShare.setSelfDestruct(false);
+                    newShare.setIsActive(true);
+                    newShare.setIsUnlocked(true);
+                    newShare.setViewCount(0);
+                    newShare.setDownloadCount(0);
+                    return fileShareRepository.save(newShare);
+                });
     }
 
     private void validateSecurityLevel(PersonalFileUploadRequest request) {
@@ -1464,5 +1510,97 @@ public class StorageService {
         log.info("📄 FileType desde BD: {}", fileType);
 
         return azureBlobService.generatePreviewUrl(file.getBlobUrl(), 30, fileType);
+    }
+
+    /**
+     * Descargar archivo personal como bytes (YA DESCIFRADO)
+     */
+    @Transactional
+    public byte[] downloadPersonalFileBytes(String fileId) {
+        User currentUser = getCurrentUser();
+        FileShare share = getPersonalFileShare(fileId, currentUser);
+
+        // Validar que esté desbloqueado si requiere seguridad
+        if (share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+            boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
+                    share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
+
+            if (!isUnlocked) {
+                throw new RuntimeException("Archivo bloqueado. Debes desbloquearlo primero");
+            }
+        }
+
+        // Incrementar contador de descargas
+        share.setDownloadCount(share.getDownloadCount() + 1);
+        share.setLastDownloadedAt(LocalDateTime.now());
+        fileShareRepository.save(share);
+
+        try {
+            // 1. Descargar bytes cifrados desde Azure
+            byte[] encryptedBytes = azureBlobService.downloadEncryptedBytes(share.getFile().getBlobUrl());
+
+            // 2. Recuperar la llave AES
+            SecretKey aesKey = encryptionService.decryptAesKey(share.getFile().getEncryptedAesKey());
+
+            // 3. Obtener el IV
+            byte[] iv = Base64.getDecoder().decode(share.getFile().getIv());
+
+            // 4. Convertir a Base64 para el decrypt
+            String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
+
+            // 5. DESCIFRAR
+            byte[] decryptedBytes = encryptionService.decrypt(encryptedBase64, aesKey, iv);
+
+            log.info("Archivo personal descifrado exitosamente: {}", share.getFile().getFileName());
+
+            return decryptedBytes;
+
+        } catch (Exception e) {
+            log.error("Error al descifrar archivo personal: {}", e.getMessage());
+            throw new RuntimeException("Error al descargar el archivo: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Obtener bytes descifrados de un archivo personal
+     */
+    @Transactional
+    public byte[] getDecryptedFileBytes(String fileId) {
+        User currentUser = getCurrentUser();
+        FileShare share = getPersonalFileShare(fileId, currentUser);
+
+        // Validar desbloqueo
+        if (share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+            boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
+                    share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
+
+            if (!isUnlocked) {
+                throw new RuntimeException("Archivo bloqueado. Debes desbloquearlo primero");
+            }
+        }
+
+        try {
+            // Descargar bytes cifrados
+            byte[] encryptedBytes = azureBlobService.downloadEncryptedBytes(share.getFile().getBlobUrl());
+
+            // Recuperar llave AES
+            SecretKey aesKey = encryptionService.decryptAesKey(share.getFile().getEncryptedAesKey());
+
+            // Obtener IV
+            byte[] iv = Base64.getDecoder().decode(share.getFile().getIv());
+
+            // Descifrar
+            String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
+            byte[] decryptedBytes = encryptionService.decrypt(encryptedBase64, aesKey, iv);
+
+            log.info("✅ Archivo personal descifrado: {}, tamaño: {} bytes",
+                    share.getFile().getFileName(), decryptedBytes.length);
+
+            return decryptedBytes;
+
+        } catch (Exception e) {
+            log.error("❌ Error descifrando archivo personal: {}", e.getMessage());
+            throw new RuntimeException("Error al descifrar el archivo: " + e.getMessage());
+        }
     }
 }

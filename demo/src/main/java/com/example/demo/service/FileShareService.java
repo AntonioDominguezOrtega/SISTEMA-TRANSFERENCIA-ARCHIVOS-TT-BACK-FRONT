@@ -17,12 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
-
+import javax.crypto.SecretKey;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,57 +65,81 @@ public class FileShareService {
         // 3. Procesar CADA archivo que el usuario arrastró a la pantalla
         for (MultipartFile file : request.getFiles()) {
             try {
-                // 3.1 Criptografía: Generar clave AES única para este archivo
-                var aesKey = encryptionService.generateAesKey();
+                // ==========================================================
+                // 3.1 LEER el archivo en bytes
+                // ==========================================================
+                byte[] fileBytes = file.getBytes();
+
+                // ==========================================================
+                // 3.2 Generar clave AES única para este archivo
+                // ==========================================================
+                SecretKey aesKey = encryptionService.generateAesKey();
                 byte[] iv = encryptionService.generateIv();
 
-                // 3.2 Envelope Encryption: Cifrar la clave AES con la clave maestra del servidor
+                // ==========================================================
+                // 3.3 CIFRAR el contenido del archivo (¡EL PASO IMPORTANTE!)
+                // ==========================================================
+                String encryptedBase64 = encryptionService.encrypt(fileBytes, aesKey, iv);
+                byte[] encryptedBytes = Base64.getDecoder().decode(encryptedBase64);
+
+                // ==========================================================
+                // 3.4 Generar nombre único para el blob (con extensión)
+                // ==========================================================
+                String originalFilename = file.getOriginalFilename();
+                String extension = "";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                }
+                String blobName = UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + extension;
+
+                // ==========================================================
+                // 3.5 SUBIR los datos CIFRADOS a Azure
+                // ==========================================================
+                String blobUrl = azureBlobService.uploadEncryptedData(encryptedBytes, blobName);
+
+                // ==========================================================
+                // 3.6 Envelope Encryption: Cifrar la clave AES con la clave maestra
+                // ==========================================================
                 String encryptedAesKey = encryptionService.encryptAesKey(aesKey);
 
-                // 3.3 Subir archivo a Azure
-                String blobUrl = azureBlobService.uploadEncryptedFile(file, encryptedAesKey, iv);
-
-                // 3.4 Guardar los metadatos físicos del archivo en BD
+                // ==========================================================
+                // 3.7 Guardar los metadatos físicos del archivo en BD
+                // ==========================================================
                 FileMetadata metadata = new FileMetadata();
                 metadata.setFileName(file.getOriginalFilename());
                 metadata.setFileType(file.getContentType());
                 metadata.setFileSize(file.getSize());
                 metadata.setBlobUrl(blobUrl);
                 metadata.setContainerName("archivos-seguros");
-                metadata.setBlobPath(extractBlobPath(blobUrl));
+                metadata.setBlobPath(blobName);  // Guardamos el blobName
                 metadata.setEncryptedAesKey(encryptedAesKey);
                 metadata.setIv(Base64.getEncoder().encodeToString(iv));
-                metadata.setChecksum(generateChecksum(file)); // SHA-256 Real para validar integridad
+                metadata.setChecksum(generateChecksum(file));
                 metadata.setUploadedBy(currentUser);
                 metadata.setUploadedAt(LocalDateTime.now());
                 metadata.setIsFolder(false);
-                metadata.setIsPersonal(false);  // ← CLAVE: Este archivo NO es personal del usuario, es para compartir
+                metadata.setIsPersonal(false);  // Este archivo es para compartir
 
                 FileMetadata saveMetadata = fileMetadataRepository.save(metadata);
 
-                // 3.5 Crear los permisos (FileShare) para CADA destinatario
+                // 3.8 Crear los permisos (FileShare) para CADA destinatario
                 for (FileUploadRequest.RecipientInfo recipient : request.getRecipients()) {
                     User targetUser = findUserByIdentifier(recipient);
 
-                    // Verificar si ya se lo compartió antes (Evitar duplicados)
                     if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(saveMetadata.getId(), targetUser)) {
                         continue;
                     }
 
-                    // Generar el "Boleto" de permisos
                     FileShare share = createFileShare(saveMetadata, currentUser, targetUser, request);
                     FileShare savedShare = fileShareRepository.save(share);
 
-                    // Disparar correos y notificaciones en campanita
                     sendSharingNotifications(savedShare, request);
-
-                    // Dejar huella en la caja negra (Auditoría)
                     logAccess(currentUser, saveMetadata, savedShare, AccessAction.SHARE, true, null);
 
                     responses.add(mapToResponse(savedShare));
                 }
 
-                // 3.6 Si el usuario marcó la casilla "Enviar copia a mí mismo"
+                // 3.9 Copia para mí mismo
                 if (Boolean.TRUE.equals(request.getSendCopyToMyself())) {
                     FileShare selfShare = createFileShare(saveMetadata, currentUser, currentUser, request);
                     fileShareRepository.save(selfShare);
@@ -141,17 +166,20 @@ public class FileShareService {
         for (ShareExistingFileRequest.RecipientInfo recipient : request.getRecipients()) {
             User targetUser = findUserByIdentifier(recipient);
 
-            if (fileShareRepository.existsByFile_IdAndSharedWithAndIsActiveTrue(file.getId(), targetUser)) {
-                continue;
-            }
+            // DESACTIVAR shares anteriores
+            log.info("🔄 Desactivando share anterior para {} con archivo {}",
+                    targetUser.getUsername(), file.getFileName());
 
-            // Llamamos al método renombrado para evitar la confusión del compilador
+            fileShareRepository.deactivateAllSharesForUser(file.getId(), targetUser);
+
+            // Crear nuevo FileShare
             FileShare share = createShareFromExistingFile(file, currentUser, targetUser, request);
             FileShare savedShare = fileShareRepository.save(share);
             sendSharingNotifications(savedShare, request);
             logAccess(currentUser, file, savedShare, AccessAction.SHARE, true, null);
             responses.add(mapToResponse(savedShare));
         }
+
         return responses;
     }
 
@@ -395,10 +423,9 @@ public class FileShareService {
     }
 
     @Transactional
-    public String downloadFile(String shareId) {
+    public byte[] downloadFile(String shareId) {
         User currentUser = getCurrentUser();
 
-        // Permitir acceso tanto si eres el receptor como si eres el emisor
         FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
@@ -414,7 +441,7 @@ public class FileShareService {
             throw new RuntimeException("No tienes permiso para descargar este archivo");
         }
 
-        // Incrementar estadísticas solo si es el receptor (sharedWith)
+        // Incrementar estadísticas
         if (share.getSharedWith().getId().equals(currentUser.getId())) {
             share.setDownloadCount(share.getDownloadCount() + 1);
             share.setLastDownloadedAt(LocalDateTime.now());
@@ -427,8 +454,40 @@ public class FileShareService {
             }
         }
 
-        // Generar enlace mágico de Azure válido por 1 hora
-        return azureBlobService.generateSasToken(share.getFile().getBlobUrl(), 60);
+        try {
+            // ==========================================================
+            // 1. Descargar los bytes CIFRADOS desde Azure
+            // ==========================================================
+            byte[] encryptedBytes = azureBlobService.downloadEncryptedBytes(share.getFile().getBlobUrl());
+
+            // ==========================================================
+            // 2. Recuperar la llave AES (que está cifrada con la llave maestra)
+            // ==========================================================
+            SecretKey aesKey = encryptionService.decryptAesKey(share.getFile().getEncryptedAesKey());
+
+            // ==========================================================
+            // 3. Obtener el IV
+            // ==========================================================
+            byte[] iv = Base64.getDecoder().decode(share.getFile().getIv());
+
+            // ==========================================================
+            // 4. Convertir los bytes cifrados a Base64 (porque tu método decrypt lo espera así)
+            // ==========================================================
+            String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
+
+            // ==========================================================
+            // 5. DESCIFRAR el archivo
+            // ==========================================================
+            byte[] decryptedBytes = encryptionService.decrypt(encryptedBase64, aesKey, iv);
+
+            log.info("Archivo descifrado exitosamente: {}", share.getFile().getFileName());
+
+            return decryptedBytes;  // ← Devolvemos el archivo YA descifrado
+
+        } catch (Exception e) {
+            log.error("Error al descifrar archivo: {}", e.getMessage());
+            throw new RuntimeException("Error al descargar el archivo: " + e.getMessage());
+        }
     }
     // =========================================================================================
     // 5. TAREAS AUTOMÁTICAS (Cron Jobs)
@@ -919,5 +978,63 @@ public class FileShareService {
         }
 
         return mapToResponse(share);
+    }
+
+    /**
+     * Obtener el PDF descifrado para visualización
+     */
+    @Transactional
+    public byte[] getDecryptedFileForPreview(String shareId) {
+        User currentUser = getCurrentUser();
+
+        FileShare share = fileShareRepository.findById(shareId)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
+
+        // Validar acceso
+        if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
+                !share.getSharedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("No tienes acceso a este archivo");
+        }
+
+        // Validar que el archivo esté activo
+        if (!share.getIsActive() || share.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("El archivo ha expirado");
+        }
+
+        // Validar desbloqueo (si no es el dueño)
+        boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
+        if (!isOwner && share.getSecurityLevel() != SecurityLevel.PUBLIC) {
+            boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
+                    share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
+
+            if (!isUnlocked) {
+                throw new RuntimeException("El archivo está bloqueado. Solicita un token o ingresa la contraseña.");
+            }
+        }
+
+        try {
+            // 1. Descargar bytes cifrados desde Azure
+            byte[] encryptedBytes = azureBlobService.downloadEncryptedBytes(share.getFile().getBlobUrl());
+
+            // 2. Recuperar la llave AES
+            SecretKey aesKey = encryptionService.decryptAesKey(share.getFile().getEncryptedAesKey());
+
+            // 3. Obtener el IV
+            byte[] iv = Base64.getDecoder().decode(share.getFile().getIv());
+
+            // 4. Convertir a Base64 para el decrypt
+            String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
+
+            // 5. DESCIFRAR
+            byte[] decryptedBytes = encryptionService.decrypt(encryptedBase64, aesKey, iv);
+
+            log.info("✅ PDF descifrado exitosamente: {}", share.getFile().getFileName());
+
+            return decryptedBytes;
+
+        } catch (Exception e) {
+            log.error("Error al descifrar PDF: {}", e.getMessage());
+            throw new RuntimeException("Error al preparar el archivo: " + e.getMessage());
+        }
     }
 }

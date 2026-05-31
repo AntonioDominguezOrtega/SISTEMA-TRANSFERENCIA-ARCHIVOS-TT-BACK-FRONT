@@ -222,15 +222,18 @@ public class SearchService {
                     String subject = share.getSubject() != null ? share.getSubject().toLowerCase() : "";
                     String sharedByName = share.getSharedBy().getNombre().toLowerCase() + " " +
                             share.getSharedBy().getApellido().toLowerCase();
+                    String sharedWithName = share.getSharedWith() != null ? share.getSharedWith().getNombre().toLowerCase() + " " + share.getSharedWith().getApellido().toLowerCase() : "";
 
                     return fileName.contains(searchTerm) ||
                             subject.contains(searchTerm) ||
-                            sharedByName.contains(searchTerm);
+                            sharedByName.contains(searchTerm) ||
+                            sharedWithName.contains(searchTerm);
                 })
                 .limit(5)
-                .map(this::mapSharedToSuggestion)
+                .map(share -> mapSharedToSuggestion(share, user)) // PASAMOS EL USER AQUÍ
                 .collect(Collectors.toList());
     }
+
 
     private boolean matchesSearch(FileShare share, String searchTerm) {
         String fileName = share.getFile().getFileName().toLowerCase();
@@ -313,24 +316,68 @@ public class SearchService {
     }
 
     private SearchSuggestionResponse mapPersonalToSuggestion(FileMetadata file) {
-        String icon = Boolean.TRUE.equals(file.getIsFolder()) ? "📁" : "📄";
+        String type;
+        String icon;
+        String location;
+
+        // Recuperamos la lógica para detectar si está en papelera, es carpeta o archivo normal
+        if (Boolean.TRUE.equals(file.getIsDeleted())) {
+            type = "TRASH";
+            icon = "🗑️";
+            location = "Papelera";
+        } else if (Boolean.TRUE.equals(file.getIsFolder())) {
+            type = "FOLDER";
+            icon = "📁";
+            location = "Mis archivos";
+        } else {
+            type = "PERSONAL";
+            icon = "📄";
+            location = file.getParentFolder() != null ? getFolderPath(file.getParentFolder()) : "Mis archivos";
+        }
 
         return SearchSuggestionResponse.builder()
                 .id(file.getId())
                 .name(file.getFileName())
-                .type(Boolean.TRUE.equals(file.getIsFolder()) ? "FOLDER" : "PERSONAL")
-                .location("Mis archivos")
+                .type(type)
+                .location(location)
                 .icon(icon)
+                .fileSize(file.getFileSize())
+                .fileType(file.getFileType())
+                .securityLevel("PUBLIC")
+                .isUnlocked(true)
+                .isExpired(false)
+                .accessLevel("DOWNLOAD")
+                .sharedBy(null)
+                .folderId(file.getParentFolder() != null ? file.getParentFolder().getId() : null)
                 .build();
     }
 
-    private SearchSuggestionResponse mapSharedToSuggestion(FileShare share) {
+    // Se agrega 'User currentUser' a los parámetros para arreglar el error del IDE
+    private SearchSuggestionResponse mapSharedToSuggestion(FileShare share, User currentUser) {
+        FileMetadata file = share.getFile();
+        boolean isExpired = share.getExpiresAt() != null && share.getExpiresAt().isBefore(LocalDateTime.now());
+        boolean isUnlocked = share.getIsUnlocked() != null && share.getIsUnlocked() &&
+                share.getUnlockedUntil() != null && share.getUnlockedUntil().isAfter(LocalDateTime.now());
+
+        // Recuperamos la lógica para saber si el usuario actual lo envió o lo recibió
+        boolean isSent = share.getSharedBy().getId().equals(currentUser.getId());
+        String type = isSent ? "SENT" : "SHARED";
+        String location = isSent && share.getSharedWith() != null ? "Para: " + share.getSharedWith().getNombre() : "De: " + share.getSharedBy().getNombre();
+        String icon = isSent ? "📤" : "📩";
+
         return SearchSuggestionResponse.builder()
                 .id(share.getId())
-                .name(share.getFile().getFileName())
-                .type("SHARED")
-                .location("De: " + share.getSharedBy().getNombre())
-                .icon("📩")
+                .name(file.getFileName())
+                .type(type)
+                .location(location)
+                .icon(icon)
+                .fileSize(file.getFileSize())
+                .fileType(file.getFileType())
+                .securityLevel(share.getSecurityLevel().toString())
+                .isUnlocked(isUnlocked)
+                .isExpired(isExpired)
+                .accessLevel(share.getAccessLevel() != null ? share.getAccessLevel().toString() : "DOWNLOAD")
+                .sharedBy(share.getSharedBy().getNombre() + " " + share.getSharedBy().getApellido())
                 .build();
     }
 

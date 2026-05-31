@@ -26,55 +26,59 @@ const profileService = {
     return response.data;
   },
 
-  // ============================================================
-  // MÉTODOS DE CONTACTOS
-  // ============================================================
+  // Actualizar datos del perfil
+  updateProfile: async (profileData) => {
+    const response = await api.put('/profile/update', profileData);
+    return response.data;
+  },
+
+  // Obtener información de almacenamiento
+  getStorageInfo: async () => {
+    const response = await api.get('/profile/storage');
+    return response.data;
+  },
+
+  // ✅ BUSCAR USUARIOS GLOBALES (usa el endpoint correcto)
+  searchGlobalUsers: async (query) => {
+    const response = await api.get('/profile/search', { params: { query } });
+    return response.data; // { results: [...] }
+  },
+
+  // ✅ SUGERENCIAS DE USUARIOS (autocompletado)
+  suggestUsers: async (query) => {
+    const response = await api.get('/profile/suggest', { params: { query } });
+    return response.data;
+  },
+
+  // Agregar contacto
+  addContact: async (userId) => {
+    const response = await api.post(`/profile/contacts/${userId}`);
+    return response.data;
+  },
+
+  // Eliminar contacto
+  removeContact: async (contactId) => {
+    const response = await api.delete(`/profile/contacts/${contactId}`);
+    return response.data;
+  },
 
   // Obtener mis contactos
-  getMyContacts: async () => {
-    try {
-      const response = await api.get('/contacts/my-contacts');
-      return response.data;
-    } catch (error) {
-      console.error('Error al obtener contactos:', error);
-      throw error;
-    }
+  getMyContacts: async (page = 0, size = 20) => {
+    const response = await api.get('/profile/contacts', { params: { page, size } });
+    return response.data;
   },
 
-  // Buscar usuarios en el directorio global
-  searchGlobalUsers: async (query) => {
-    try {
-      const response = await api.get('/contacts/search', {
-        params: { q: query }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error en búsqueda global:', error);
-      throw error;
-    }
+  // Buscar dentro de mis contactos
+  searchMyContacts: async (query) => {
+    const response = await api.get('/profile/contacts/search', { params: { query } });
+    return response.data;
   },
-
-  // Agregar un contacto
-  addContact: async (userId) => {
-    try {
-      const response = await api.post('/contacts/add', { userId });
-      return response.data;
-    } catch (error) {
-      console.error('Error al agregar contacto:', error);
-      throw error;
-    }
+  searchUsersByAny: async (query) => {
+    console.log('🔍 Buscando usuarios con query:', query);
+    const response = await api.get('/profile/search', { params: { query } });
+    console.log('📦 Respuesta del backend:', response.data);
+    return response.data;
   },
-
-  // Eliminar un contacto
-  removeContact: async (contactId) => {
-    try {
-      const response = await api.delete(`/contacts/${contactId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error al eliminar contacto:', error);
-      throw error;
-    }
-  }
 };
 
 export default profileService;

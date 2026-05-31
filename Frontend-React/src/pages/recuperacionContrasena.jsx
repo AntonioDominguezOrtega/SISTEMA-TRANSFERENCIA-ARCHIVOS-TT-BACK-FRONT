@@ -4,6 +4,8 @@ import PublicHeader from '../components/PublicHeader'
 import PrivateHeader from '../components/PrivateHeader' 
 import Footer from '../components/Footer'
 import authService from '../services/authService'
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 // 🌟 FUNCIONES DE ENMASCARAMIENTO (MÁSCARA DE SEGURIDAD)
 const enmascararEmail = (email) => {
@@ -34,13 +36,15 @@ export default function RecuperacionContrasena() {
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [userContact, setUserContact] = useState({ email: '', phone: '' });
 
   // ============================================================
-  // SOLICITAR TOKEN SMS (BACKEND REAL)
+  // SOLICITAR TOKEN EMAIL (BACKEND REAL)
   // ============================================================
   const handleSendToken = async (e) => {
     e.preventDefault();
@@ -60,7 +64,7 @@ export default function RecuperacionContrasena() {
       const response = await authService.requestPasswordReset(identificador.trim(), 'SMS');
       
       setUserContact(prev => ({ ...prev, email: identificador.trim() }));
-      setSuccessMessage(response.message || 'Se ha enviado un código de verificación a tu correo y teléfono.');
+      setSuccessMessage(response.message || 'Se ha enviado un código de verificación a tu correo electrónico.');
       setShowResetModal(true);
     } catch (err) {
       console.error('Error al solicitar recuperación:', err);
@@ -71,7 +75,7 @@ export default function RecuperacionContrasena() {
   };
 
   // ============================================================
-  // RESTABLECER CONTRASEÑA CON CÓDIGO SMS (BACKEND REAL)
+  // RESTABLECER CONTRASEÑA CON CÓDIGO EMAIL (BACKEND REAL)
   // ============================================================
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -83,8 +87,9 @@ export default function RecuperacionContrasena() {
       return;
     }
     
-    if (newPassword.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    const passwordErrors = getPasswordErrors(newPassword);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors.join(' '));
       return;
     }
     
@@ -120,7 +125,7 @@ export default function RecuperacionContrasena() {
   };
 
   // ============================================================
-  // REENVIAR CÓDIGO SMS
+  // REENVIAR CÓDIGO EMAIL
   // ============================================================
   const handleResendCode = async () => {
     setError('');
@@ -129,7 +134,7 @@ export default function RecuperacionContrasena() {
     
     try {
       const response = await authService.resendPasswordResetCode(identificador.trim(), 'SMS');
-      setSuccessMessage(response.message || 'Se ha reenviado un nuevo código a tu correo y teléfono.');
+      setSuccessMessage(response.message || 'Se ha reenviado un nuevo código a tu correo.');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al reenviar el código.');
     } finally {
@@ -170,7 +175,7 @@ export default function RecuperacionContrasena() {
                 <p style={{ color: 'var(--color-text-medium)', fontSize: '0.95rem', marginTop: '5px' }}>
                   {vieneDesdeConfiguracion 
                     ? 'Por seguridad, ingresa tu correo para confirmar tu identidad antes del cambio.' 
-                    : 'Ingresa tu correo registrado para recibir un código de seguridad por SMS y correo de respaldo.'
+                    : 'Ingresa tu correo registrado para recibir un código de seguridad .'
                   }
                 </p>
               </div>
@@ -221,7 +226,7 @@ export default function RecuperacionContrasena() {
                     />
                   </div>
                   <small style={{ color: 'var(--color-text-medium)', fontSize: '0.7rem', marginTop: '4px', display: 'block' }}>
-                    Recibirás un código de 6 dígitos por SMS y correo de respaldo.
+                    Recibirás un código de 6 dígitos por correo.
                   </small>
                 </div>
 
@@ -258,7 +263,7 @@ export default function RecuperacionContrasena() {
               <h2 style={{ marginTop: '1rem', color: 'white', fontWeight: '700' }}>Verificar Identidad</h2>
               
               <p style={{ fontSize: '0.92rem', color: 'var(--color-text-medium)', marginTop: '10px', lineHeight: '1.5' }}>
-                Se ha enviado un <strong style={{ color: 'white' }}>código de verificación de 6 dígitos</strong> al correo <strong style={{ color: 'white' }}>{enmascararEmail(userContact.email)}</strong> y vía SMS.
+                Se ha enviado un <strong style={{ color: 'white' }}>código de verificación de 6 dígitos</strong> al correo <strong style={{ color: 'white' }}>{enmascararEmail(userContact.email)}</strong>
               </p>
             </div>
 
@@ -315,33 +320,39 @@ export default function RecuperacionContrasena() {
                 </small>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label" style={{ color: 'white' }}>Nueva Contraseña</label>
                 <input 
-                  type="password" 
+                  type={showNewPassword ? 'text' : 'password'} 
                   className="form-control-modern" 
                   placeholder="••••••••" 
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ paddingLeft: '15px' }}
+                  style={{ paddingLeft: '15px', paddingRight: '46px' }}
                 />
+                <button type="button" onClick={() => setShowNewPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '38px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showNewPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
                 <small style={{ color: 'var(--color-text-medium)', fontSize: '0.7rem', marginTop: '4px', display: 'block' }}>
-                  Mínimo 6 caracteres
+                  Mínimo 8 caracteres, una mayúscula y un número
                 </small>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label" style={{ color: 'white' }}>Confirmar Nueva Contraseña</label>
                 <input 
-                  type="password" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
                   className="form-control-modern" 
                   placeholder="••••••••" 
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ paddingLeft: '15px' }}
+                  style={{ paddingLeft: '15px', paddingRight: '46px' }}
                 />
+                <button type="button" onClick={() => setShowConfirmPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '38px', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isLoading}>

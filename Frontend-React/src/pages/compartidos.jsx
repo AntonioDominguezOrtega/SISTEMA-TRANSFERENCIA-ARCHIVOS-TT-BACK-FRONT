@@ -35,7 +35,7 @@ const renderSecurityBadge = (securityLevel, isUnlocked, hasPassword) => {
   }
   if (securityLevel === 'TOKEN_SMS') {
     if (isUnlocked) return <FaUnlock title="Desbloqueado" style={{ color: '#52c41a', marginRight: '8px', minWidth: '16px' }} />;
-    return <FaShieldAlt title="Requiere verificación SMS" style={{ color: '#0a3fff', marginRight: '8px', minWidth: '16px' }} />;
+    return <FaShieldAlt title="Requiere verificación por correo" style={{ color: '#0a3fff', marginRight: '8px', minWidth: '16px' }} />;
   }
   return null;
 };

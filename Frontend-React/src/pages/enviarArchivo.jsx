@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PrivateLayout from '../components/PrivateLayout';
 import Footer from '../components/Footer';
 import FileSelectorModal from '../components/FileSelectorModal';
@@ -12,8 +12,9 @@ import searchService from '../services/searchService';
 import { 
   FaUpload, FaLock, FaShieldAlt, FaGlobe, FaChevronLeft, 
   FaFileAlt, FaUserPlus, FaClock, FaSpinner, FaCloud, 
-  FaEye, FaDownload, FaTimes, FaSearch, FaKey, FaEnvelope, FaUser
+  FaEye, FaEyeSlash, FaDownload, FaTimes, FaSearch, FaKey, FaEnvelope, FaUser
 } from 'react-icons/fa';
+import { getPasswordErrors } from '../utils/passwordUtils';
 
 // Helper para obtener iniciales
 const getInitials = (nombre, apellido) => {
@@ -25,6 +26,7 @@ const getInitials = (nombre, apellido) => {
 
 export default function EnviarArchivo() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // ========== ESTADOS DE ARCHIVOS ==========
   const [origenArchivo, setOrigenArchivo] = useState('NUEVO'); // 'NUEVO' o 'EXISTENTE'
@@ -52,6 +54,7 @@ export default function EnviarArchivo() {
   const [security, setSecurity] = useState('PUBLIC');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [useAccountPhone, setUseAccountPhone] = useState(true);
   const [customPhoneNumber, setCustomPhoneNumber] = useState('');
   
@@ -83,15 +86,54 @@ export default function EnviarArchivo() {
     const loadContacts = async () => {
       try {
         const response = await profileService.getMyContacts();
-        // Como usamos axios directo, la información está dentro de response.data
-        // Hacemos un fallback por si el backend devuelve un arreglo directo o un objeto con "contacts"
-        setMisContactos(response.data.contacts || response.data || []);
+        const contactsList = response.data.contacts || response.data || [];
+        setMisContactos(contactsList);
+
+        // --- LÓGICA PARA LEER LA URL Y PRE-SELECCIONAR CONTACTO ---
+        const searchParams = new URLSearchParams(location.search);
+        const toId = searchParams.get('to');
+
+        if (toId && contactsList.length > 0) {
+          // Buscamos el contacto que coincida con el ID (userId, contactId o id)
+          const contactToAdd = contactsList.find(c => 
+            String(c.userId) === String(toId) || 
+            String(c.id) === String(toId) || 
+            String(c.contactId) === String(toId)
+          );
+          
+          if (contactToAdd) {
+            const identifier = contactToAdd.username || contactToAdd.email;
+            const type = contactToAdd.username ? 'USERNAME' : 'EMAIL';
+            const label = `${contactToAdd.nombre} ${contactToAdd.apellido || ''}`.trim();
+
+            // Usamos una función para actualizar el estado y evitar duplicados
+            // en caso de que el componente se renderice dos veces.
+            setDestinatarios(prevDestinatarios => {
+              if (prevDestinatarios.some(d => d.identifier === identifier)) {
+                return prevDestinatarios; // Si ya está, no lo duplica
+              }
+              return [...prevDestinatarios, {
+                id: contactToAdd.userId || contactToAdd.id,
+                identifier,
+                type,
+                label,
+                nombre: contactToAdd.nombre,
+                apellido: contactToAdd.apellido,
+                username: contactToAdd.username,
+                email: contactToAdd.email,
+                profilePictureUrl: contactToAdd.profilePictureUrl
+              }];
+            });
+          }
+        }
+        // ----------------------------------------------------------
+
       } catch (err) {
         console.error("Error al cargar mis contactos", err);
       }
     };
     loadContacts();
-  }, []);
+  }, [location.search]); // <--- Asegúrate de que location.search esté en el arreglo de dependencias
 
   // ============================================================
   // 2. BÚSQUEDA GLOBAL DE USUARIOS
@@ -102,8 +144,8 @@ export default function EnviarArchivo() {
       setBuscandoGlobal(true);
       const delay = setTimeout(async () => {
         try {
-          const response = await profileService.searchUsersByAny(query);
-          setResultadosFiltradosGlobal(response.results || []);
+          const response = await profileService.searchGlobalUsers(query);
+          setResultadosFiltradosGlobal(response.data.results || []);
         } catch (err) {
           console.error(err);
         } finally {
@@ -362,7 +404,7 @@ export default function EnviarArchivo() {
 
   return (
     <PrivateLayout>
-      <main style={{ paddingTop: '110px', paddingBottom: '80px', color: 'white', maxWidth: '800px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
+      <main className="page-content" style={{ paddingTop: '110px', paddingBottom: '80px', color: 'white', maxWidth: '800px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' }}>
         
         <section style={{ marginBottom: '30px', textAlign: 'left' }}>
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--color-text-medium)', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0 }}>
@@ -501,7 +543,7 @@ export default function EnviarArchivo() {
                   onKeyPress={(e) => e.key === 'Enter' && agregarDestinatarioManual(busquedaContactos)}
                   style={{ width: '100%', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 12px 12px 40px', outline: 'none' }}
                 />
-                
+
                 {busquedaContactos && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1D263C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                     {contactosFiltrados.length === 0 ? (
@@ -510,6 +552,7 @@ export default function EnviarArchivo() {
                       </div>
                     ) : (
                       contactosFiltrados.map(contacto => (
+                        
                         <div 
                           key={contacto.contactId} 
                           onClick={() => agregarDestinatario(contacto)}
@@ -534,11 +577,11 @@ export default function EnviarArchivo() {
                   </div>
                 )}
               </div>
-              
-              <button type="button" className="btn btn-secondary" onClick={() => setShowModalBusquedaGlobal(true)} style={{ padding: '0 20px', backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}>
+            </div>
+              <br></br>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowModalBusquedaGlobal(true)} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}>
                 <FaGlobe /> Global
               </button>
-            </div>
           </div>
 
           {/* 3. ENVIAR COPIA (solo para archivos nuevos) */}
@@ -550,7 +593,7 @@ export default function EnviarArchivo() {
           )}
 
           {/* 4. ASUNTO Y EXPIRACIÓN */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+          <div className="responsive-grid responsive-grid-2" style={{ marginBottom: '25px' }}>
             <div>
               <label style={{ color: 'white', fontWeight: '500', display: 'block', marginBottom: '8px' }}>Asunto (opcional)</label>
               <input type="text" placeholder="Ej. Documentos importantes" value={asunto} onChange={(e) => setAsunto(e.target.value)} style={{ width: '100%', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', outline: 'none' }} />
@@ -596,7 +639,7 @@ export default function EnviarArchivo() {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', border: security === 'TOKEN_SMS' ? '2px solid #0a3fff' : '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', cursor: 'pointer' }}>
                 <input type="radio" name="security" value="TOKEN_SMS" checked={security === 'TOKEN_SMS'} onChange={() => setSecurity('TOKEN_SMS')} />
-                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por SMS</strong><br /><small>Recibirá un código para desbloquearlo</small></div>
+                <div><FaShieldAlt style={{ color: '#52c41a' }} /> <strong>Verificación por correo</strong><br /><small>Recibirá un código para desbloquearlo</small></div>
               </label>
             </div>
           </div>
@@ -604,25 +647,29 @@ export default function EnviarArchivo() {
           {/* Contraseña */}
           {security === 'PASSWORD' && (
             <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(250, 173, 20, 0.05)', borderLeft: '4px solid #faad14', borderRadius: '4px' }}>
-              <input type="password" placeholder="Contraseña (mínimo 8 caracteres)" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Contraseña (mínimo 8 caracteres)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                />
+                <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  {showPassword ? <FaEye /> : <FaEyeSlash />}
+                </button>
+              </div>
+
               <input type="password" placeholder="Confirmar contraseña" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: confirmPassword && password !== confirmPassword ? '1px solid #ff4d4f' : '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               {confirmPassword && password !== confirmPassword && <span style={{ color: '#ff4d4f', fontSize: '0.75rem', marginTop: '5px' }}>❌ Las contraseñas no coinciden</span>}
               {confirmPassword && password === confirmPassword && password.length >= 8 && <span style={{ color: '#52c41a', fontSize: '0.75rem', marginTop: '5px' }}>✅ Coinciden</span>}
-            </div>
-          )}
-
-          {/* SMS */}
-          {security === 'TOKEN_SMS' && (
-            <div style={{ marginBottom: '25px', padding: '16px', backgroundColor: 'rgba(82, 196, 26, 0.05)', borderLeft: '4px solid #52c41a', borderRadius: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <input type="checkbox" checked={useAccountPhone} onChange={(e) => setUseAccountPhone(e.target.checked)} /> Usar mi número registrado
-              </label>
-              {!useAccountPhone && (
-                <input type="tel" placeholder="+52 55 1234 5678" value={customPhoneNumber} onChange={(e) => setCustomPhoneNumber(e.target.value)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--color-dark)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+              {password && getPasswordErrors(password).length > 0 && (
+                <div style={{ marginTop: '8px', color: '#ffcc66', fontSize: '0.85rem' }}>
+                  {getPasswordErrors(password).map((p, i) => <div key={i}>• {p}</div>)}
+                </div>
               )}
             </div>
           )}
-
           {/* 8. NOTIFICACIONES */}
           <div style={{ marginBottom: '30px', padding: '15px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
             <label style={{ color: 'white', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Notificaciones</label>
@@ -632,9 +679,6 @@ export default function EnviarArchivo() {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
                 <input type="checkbox" checked={notifyOnDownload} onChange={(e) => setNotifyOnDownload(e.target.checked)} /> Notificar cuando descarguen
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'var(--color-text-medium)' }}>
-                <input type="checkbox" checked={selfDestruct} onChange={(e) => setSelfDestruct(e.target.checked)} /> Auto-destruir después de la primera vista
               </label>
             </div>
           </div>
@@ -650,7 +694,7 @@ export default function EnviarArchivo() {
       {/* MODAL DIRECTORIO GLOBAL */}
       {showModalBusquedaGlobal && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(19, 25, 36, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }}>
-          <div style={{ width: '500px', padding: '2rem', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #0a3fff', boxShadow: '0 0 20px rgba(10, 63, 255, 0.5)' }}>
+          <div className="global-search-modal" style={{ padding: '2rem', backgroundColor: '#1D263C', borderRadius: '16px', border: '1px solid #0a3fff', boxShadow: '0 0 20px rgba(10, 63, 255, 0.5)' }}>
             <h2 style={{ textAlign: 'center', marginBottom: '10px', color: 'white' }}>Directorio Global</h2>
             <p style={{ textAlign: 'center', color: '#888', marginBottom: '20px' }}>Busca y agrega usuarios de la plataforma</p>
             

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -101,5 +102,23 @@ public interface FileShareRepository extends JpaRepository<FileShare, String> {
     @Modifying
     @Query("DELETE FROM FileShare fs WHERE fs.file.id = :fileId")
     void deleteByFile_Id(@Param("fileId") String fileId);
+
+    /**
+     * Buscar un FileShare activo por archivo y usuario destinatario
+     */
+    Optional<FileShare> findByFile_IdAndSharedWithAndIsActiveTrue(String fileId, User sharedWith);
+
+    /**
+     * Buscar TODOS los FileShares activos por archivo y usuario destinatario
+     */
+    List<FileShare> findAllByFile_IdAndSharedWithAndIsActiveTrue(String fileId, User sharedWith);
+
+    /**
+     * Desactivar TODOS los FileShares de un archivo con un usuario específico
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE FileShare fs SET fs.isActive = false WHERE fs.file.id = :fileId AND fs.sharedWith = :sharedWith AND fs.isActive = true")
+    int deactivateAllSharesForUser(@Param("fileId") String fileId, @Param("sharedWith") User sharedWith);
 }
 
