@@ -502,7 +502,7 @@ export default function Papelera() {
                 `¿Estás seguro de que deseas restaurar "${confirmAction?.itemName}"?` :
                confirmAction?.action === 'delete' ? 
                 `¿Estás seguro de que deseas eliminar permanentemente "${confirmAction?.itemName}"? Esta acción no se puede deshacer.` :
-                `¿Estás seguro de que deseas vaciar toda la papelera? Todos los archivos se perderán permanentemente.`}
+                `¿Estás seguro de que deseas vaciar toda la papelera? Todos los archivos y carpetas se perderán permanentemente.`}
             </p>
             
             <div style={{ display: 'flex', gap: '12px' }}>

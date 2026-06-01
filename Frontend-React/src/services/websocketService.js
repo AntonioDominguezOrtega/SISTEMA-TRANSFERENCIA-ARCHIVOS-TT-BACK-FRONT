@@ -10,7 +10,7 @@ class WebSocketService {
 
   connect(userId, onNotificationReceived) {
     const token = localStorage.getItem('token');
-    const socket = new SockJS('http://localhost:8080/ws');
+    const socket = new SockJS('https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net/ws');
     
     this.stompClient = new Client({
       webSocketFactory: () => socket,

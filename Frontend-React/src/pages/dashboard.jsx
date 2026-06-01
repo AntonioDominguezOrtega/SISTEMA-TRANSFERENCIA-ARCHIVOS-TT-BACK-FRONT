@@ -430,13 +430,41 @@ export default function Dashboard() {
       <div 
         key={folder.id} 
         className="card-glow-plop" 
-        style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#1D263C', padding: '16px', borderRadius: '10px', borderLeft: `5px solid ${folderColor}`, cursor: 'pointer' }} 
+        style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#1D263C', padding: '16px', borderRadius: '10px', borderLeft: `5px solid ${folderColor}`, cursor: 'pointer' }} 
         onClick={() => navigateToFolder(folder.id, folder.name)}
       >
-        <FaFolderOpen style={{ fontSize: '1.5rem', color: folderColor }} />
-        <div style={{ textAlign: 'left', flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'white', fontWeight: '600' }}>{folder.name}</h4>
-          <small style={{ color: 'var(--color-text-medium)', fontSize: '0.8rem' }}>Carpeta personal</small>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+            <FaFolderOpen style={{ fontSize: '1.5rem', color: folderColor }} />
+            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'white', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</h4>
+              <small style={{ color: 'var(--color-text-medium)', fontSize: '0.8rem' }}>Carpeta personal</small>
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleMoveToTrash(folder.id);
+            }}
+            title="Mover carpeta a papelera"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#f5222d',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s ease'
+            }}
+          >
+            <FaTrash />
+          </button>
+        </div>
+        <div style={{ color: 'var(--color-text-medium)', fontSize: '0.82rem', marginTop: '4px' }}>
+          {folder.fileCount != null ? `${folder.fileCount} archivo${folder.fileCount === 1 ? '' : 's'}` : 'Carpeta'}
         </div>
       </div>
     );

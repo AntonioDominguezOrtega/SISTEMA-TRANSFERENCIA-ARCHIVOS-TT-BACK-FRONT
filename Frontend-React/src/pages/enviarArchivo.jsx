@@ -337,7 +337,7 @@ export default function EnviarArchivo() {
         
         formData.append('request', new Blob([JSON.stringify(requestData)], { type: 'application/json' }));
         
-        const response = await fetch('http://localhost:8080/api/files/upload', {
+        const response = await fetch('https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net/api/files/upload', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -373,7 +373,7 @@ export default function EnviarArchivo() {
             if (!useAccountPhone) requestData.customPhoneNumber = customPhoneNumber;
           }
           
-          const res = await fetch('http://localhost:8080/api/storage/share', {
+          const res = await fetch('https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net/api/storage/share', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
