@@ -97,11 +97,12 @@ public class AuthService {
         // 6. Envío del SMS a través de Twilio
         boolean smsSent = twilioService.sendVerificationCode(user.getPhone(), verificationCode);
 
-        // 7. RESPALDO: Si el SMS falló (por cuenta Trial o número inválido), enviamos el código por correo
+        // 7. Envío siempre del código también por correo para que el usuario reciba el OTP aunque no use SMS.
+        log.info("Enviando código de verificación de cuenta a {} por correo electrónico", user.getEmail());
+        emailService.sendAccountVerificationEmail(user.getEmail(), verificationCode, user.getNombre());
+
         if (!smsSent) {
-            log.info("Enviando código OTP por correo electrónico como respaldo a {}", user.getEmail());
-            // Reutilizamos tu método de EmailService que envía el HTML con el código
-            emailService.sendAccountVerificationEmail(user.getEmail(), verificationCode, user.getNombre());
+            log.warn("El envío SMS falló, pero el código se ha enviado por correo a {}", user.getEmail());
         }
 
         // NUEVO: Crear estructura de almacenamiento personal
@@ -172,13 +173,13 @@ public class AuthService {
 
         // Envio de mensaje SMS
         boolean smsSent = twilioService.sendVerificationCode(user.getPhone(), newCode);
+        emailService.sendPasswordResetCodeEmail(user.getEmail(), newCode, user.getNombre());
 
         if (!smsSent) {
-            emailService.sendPasswordResetCodeEmail(user.getEmail(), newCode, user.getNombre());
             return "El SMS falló. Nuevo código de verificación enviado a tu correo electrónico.";
         }
 
-        return "Nuevo codigo de verificacion enviado exitosamente";
+        return "Nuevo código de verificación enviado exitosamente";
     }
 
     /**

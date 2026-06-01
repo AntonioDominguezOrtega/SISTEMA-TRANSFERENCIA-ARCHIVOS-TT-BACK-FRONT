@@ -205,6 +205,56 @@ main {
   .cta-link { text-align: center; }
 }
 
+/* =========================================
+   LOGIN FORMULARIOS CON OJOS
+   ========================================= */
+.formulario__login input[type="password"],
+.formulario__login input[type="text"],
+.formulario__register input[type="password"],
+.formulario__register input[type="text"] {
+  padding-right: 50px !important;
+}
+
+.form-group-slide {
+  position: relative;
+}
+
+.input-with-eye {
+  position: relative;
+}
+
+.input-with-eye input {
+  padding-right: 50px !important;
+}
+
+.input-with-eye button[type="button"] {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--color-text-medium);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.input-with-eye button[type="button"]:hover {
+  color: var(--color-accent);
+}
+
+.form-group-slide button[type="button"] {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 @media (max-width: 768px) {
 
   .private-header {

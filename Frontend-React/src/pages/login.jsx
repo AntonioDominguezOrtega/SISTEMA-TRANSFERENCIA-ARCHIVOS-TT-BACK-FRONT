@@ -247,7 +247,7 @@ export default function Login() {
                   {errorIdentificador && <p className="error-text-slide">{errorIdentificador}</p>}
                 </div>
 
-                <div className="form-group-slide" style={{ position: 'relative' }}>
+                <div className="form-group-slide input-with-eye" style={{ position: 'relative' }}>
                   <input 
                     type={showLoginPassword ? 'text' : 'password'} 
                     placeholder="Contraseña" 
@@ -327,7 +327,7 @@ export default function Login() {
                 <input type="tel" placeholder="Teléfono Celular" value={regTel} onChange={(e) => setRegTel(e.target.value)} required />
 
                 <div className="responsive-grid responsive-grid-2" style={{ gap: '10px' }}>
-                  <div style={{ position: 'relative' }}>
+                  <div className="input-with-eye" style={{ position: 'relative' }}>
                     <input
                       type={showRegPassword ? 'text' : 'password'}
                       placeholder="Contraseña"
@@ -361,7 +361,7 @@ export default function Login() {
                       {showRegPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
-                  <div style={{ position: 'relative' }}>
+                  <div className="input-with-eye" style={{ position: 'relative' }}>
                     <input
                       type={showRegConfirmPassword ? 'text' : 'password'}
                       placeholder="Confirmar"

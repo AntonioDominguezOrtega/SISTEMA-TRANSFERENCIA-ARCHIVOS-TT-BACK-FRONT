@@ -43,7 +43,7 @@ public class AuthController {
 
                 // Si todo sale bien, respondemos HTTP 200 (OK) con un mensaje JSON
                 return ResponseEntity.ok(Map.of(
-                        "message", "Usuario registrado exitosamente. Se ha enviado un codigo de verificacion a su telefono.",
+                        "message", "Usuario registrado exitosamente. Se ha enviado un código de verificación por SMS y correo electrónico.",
                         "email", user.getEmail()
                 ));
             } catch (RuntimeException e) {

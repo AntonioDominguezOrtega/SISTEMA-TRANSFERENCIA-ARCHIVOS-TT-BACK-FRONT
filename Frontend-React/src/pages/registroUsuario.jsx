@@ -221,18 +221,18 @@ export default function RegistroUsuario() {
 
                 {/* Contraseñas en Grid para compactar espacio */}
                 <div className="responsive-grid responsive-grid-2">
-                  <div className="form-group" style={{ position: 'relative' }}>
+                  <div className="form-group input-with-eye" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="password">Contraseña</label>
                     <input type={showPassword ? 'text' : 'password'} id="password" className="form-control-modern" placeholder="••••••••" required value={formData.password} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
-                    <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
+                    <button type="button" onClick={() => setShowPassword(prev => !prev)} style={{ background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
                       {showPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
 
-                  <div className="form-group" style={{ position: 'relative' }}>
+                  <div className="form-group input-with-eye" style={{ position: 'relative' }}>
                     <label className="form-label" htmlFor="confirmPassword">Confirmar Contraseña</label>
                     <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" className="form-control-modern" placeholder="••••••••" required value={formData.confirmPassword} onChange={handleChange} style={{ paddingLeft: '15px', paddingRight: '46px' }} />
-                    <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
+                    <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={{ background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: '4px 8px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = 'var(--color-accent)'} onMouseLeave={(e) => e.target.style.color = 'var(--color-text-medium)'}>
                       {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
