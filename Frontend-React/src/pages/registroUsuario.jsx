@@ -148,7 +148,6 @@ export default function RegistroUsuario() {
           <div className="container auth-container">
             <div className="auth-card" style={{ backgroundColor: 'var(--color-primary)', border: '1px solid rgba(255,255,255,0.05)', padding: 'clamp(16px, 4%, 40px)', borderRadius: '16px', maxWidth: '600px', width: '100%', margin: '0 auto' }}>
               <div className="auth-header" style={{ marginBottom: '25px' }}>
-                <span className="section-badge">Registro Seguro Capara</span>
                 <h2 style={{ color: 'var(--color-white)', fontSize: '2rem', marginTop: '10px' }}>Crear cuenta</h2>
                 <p style={{ color: 'var(--color-text-medium)', fontSize: '0.95rem' }}>
                   Completa tus datos para el alta en el sistema de transferencia cifrada.
@@ -162,7 +161,7 @@ export default function RegistroUsuario() {
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" htmlFor="nombre">Nombre(s)</label>
                     <div className="input-wrapper">
-                      <span className="input-icon">👤</span>
+                      <span className="input-icon"></span>
                       <input 
                         type="text" 
                         id="nombre" 
@@ -178,7 +177,7 @@ export default function RegistroUsuario() {
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" htmlFor="apellidos">Apellidos</label>
                     <div className="input-wrapper">
-                      <span className="input-icon">👤</span>
+                      <span className="input-icon"></span>
                       <input 
                         type="text" 
                         id="apellidos" 
@@ -196,7 +195,7 @@ export default function RegistroUsuario() {
                 <div className="form-group">
                   <label className="form-label" htmlFor="nombreUsuario">Nombre de Usuario</label>
                   <div className="input-wrapper">
-                    <span className="input-icon">🆔</span>
+                    <span className="input-icon"></span>
                     <input type="text" id="nombreUsuario" className="form-control-modern" placeholder="Ej. antoni_dominguez" required value={formData.nombreUsuario} onChange={handleChange} />
                   </div>
                   <small className="form-help" style={{ color: 'var(--color-text-medium)' }}>Este es el único dato que podrás cambiar en configuración.</small>
@@ -214,7 +213,7 @@ export default function RegistroUsuario() {
                 <div className="form-group">
                   <label className="form-label" htmlFor="tel">Teléfono Celular</label>
                   <div className="input-wrapper">
-                    <span className="input-icon">📱</span>
+                    <span className="input-icon"></span>
                     <input type="tel" id="tel" className="form-control-modern" placeholder="55 1234 5678" required value={formData.tel} onChange={handleChange} />
                   </div>
                 </div>
