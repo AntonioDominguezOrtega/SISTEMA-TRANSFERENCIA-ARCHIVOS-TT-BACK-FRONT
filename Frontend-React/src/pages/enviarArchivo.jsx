@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import FileSelectorModal from '../components/FileSelectorModal';
 
 // Servicios Reales
-import profileService from '../services/configService';
+import profileService from '../services/profileService';
 import searchService from '../services/searchService';
 
 // React Icons
@@ -86,7 +86,10 @@ export default function EnviarArchivo() {
     const loadContacts = async () => {
       try {
         const response = await profileService.getMyContacts();
-        const contactsList = response.data.contacts || response.data || [];
+        const payload = response?.contacts ?? response?.data ?? response;
+        const contactsList = Array.isArray(payload)
+          ? payload
+          : payload?.contacts || [];
         setMisContactos(contactsList);
 
         // --- LÓGICA PARA LEER LA URL Y PRE-SELECCIONAR CONTACTO ---
@@ -145,7 +148,13 @@ export default function EnviarArchivo() {
       const delay = setTimeout(async () => {
         try {
           const response = await profileService.searchGlobalUsers(query);
-          setResultadosFiltradosGlobal(response.data.results || []);
+          const data = response?.data ?? response;
+          const results = Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : [];
+          setResultadosFiltradosGlobal(results);
         } catch (err) {
           console.error(err);
         } finally {

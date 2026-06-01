@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PrivateLayout from '../components/PrivateLayout'
-import profileService from '../services/configService';
+import profileService from '../services/profileService';
 
 export default function ContactosUsuario() {
   const navigate = useNavigate();
@@ -24,8 +24,11 @@ export default function ContactosUsuario() {
     setCargando(true);
     profileService.getMyContacts()
       .then(response => {
-        // Tu backend devuelve la lista dentro de "contacts"
-        setMisContactos(response.data.contacts || []);
+        const payload = response?.contacts ?? response?.data ?? response;
+        const contacts = Array.isArray(payload)
+          ? payload
+          : payload?.contacts || [];
+        setMisContactos(contacts);
         setCargando(false);
       })
       .catch(error => {
@@ -57,9 +60,13 @@ export default function ContactosUsuario() {
       const delayBusqueda = setTimeout(() => {
         profileService.searchGlobalUsers(query)
           .then(response => {
-            // El backend devuelve "results". 
-            // Filtramos a los que ya son contactos (isContact === true) para no mostrarlos
-            const usuariosEncontrados = (response.data.results || []).filter(u => !u.isContact);
+            const data = response?.data ?? response;
+            const usuarios = Array.isArray(data?.results)
+              ? data.results
+              : Array.isArray(data)
+                ? data
+                : [];
+            const usuariosEncontrados = usuarios.filter(u => !u.isContact);
             setResultadosFiltradosGlobal(usuariosEncontrados);
             setBuscandoGlobal(false);
           })
