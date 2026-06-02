@@ -149,7 +149,7 @@ export default function PrivateHeader({ toggleSidebar }) {
       setShowResults(true);
 
       const delayBusqueda = setTimeout(() => {
-        searchService.searchFiles(query, 'all', 0, 20)
+        searchService.searchFilesComplete(query, 0, 20)
           .then(response => {
             const results = response.data.results || response.data.files || [];
             setSearchResults(results);
@@ -157,6 +157,7 @@ export default function PrivateHeader({ toggleSidebar }) {
           })
           .catch(error => {
             console.error("Error al buscar archivos:", error);
+            setSearchResults([]);
             setIsSearching(false);
           });
       }, 400);
@@ -208,10 +209,10 @@ export default function PrivateHeader({ toggleSidebar }) {
   // ============================================================
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchTerm.trim()) {
-      setShowResults(false);
-      navigate(`/busqueda?q=${encodeURIComponent(searchTerm)}`);
-    }
+    // Al presionar Enter, simplemente limpiar sin navegar a búsqueda
+    setShowResults(false);
+    setSearchTerm('');
+    setIsSearchOpen(false);
   };
 
   const handleResultClick = async (item) => {
@@ -221,66 +222,115 @@ export default function PrivateHeader({ toggleSidebar }) {
     setIsSearching(true);
     
     try {
+      let selectedFileData = null;
+
+      // CASO 1: Es una carpeta
       if (item.type === 'FOLDER' || item.isFolder === true) {
         navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
-      } else if (item.type === 'PERSONAL' || item.isPersonal === true) {
-        // Obtener metadata completa del archivo personal
-        const fullMetadata = await storageService.getItemInfo(item.id);
-        navigate('/dashboard', { 
-          state: { 
-            selectedFile: {
-              id: item.id,
-              itemId: item.id,
-              name: fullMetadata.name || item.name,
-              fileName: fullMetadata.name || item.name,
-              fileType: fullMetadata.fileType || item.fileType,
-              fileSize: fullMetadata.fileSize || item.fileSize,
-              uploadedAt: fullMetadata.uploadedAt || item.uploadedAt,
-              securityLevel: fullMetadata.securityLevel || item.securityLevel,
-              isUnlocked: fullMetadata.isUnlocked || item.isUnlocked,
-              isExpired: false,
-              isPersonal: true,
-              tipo: 'personal',
-              createdAt: fullMetadata.createdAt,
-              updatedAt: fullMetadata.updatedAt,
-              accessLevel: fullMetadata.accessLevel,
-              parentFolderId: fullMetadata.parentFolderId,
-              ...fullMetadata
-            }
-          }
-        });
-      } else if (item.type === 'SHARED' || item.isShared === true || item.shareId) {
-        // Obtener metadata completa del archivo compartido
+        setIsSearching(false);
+        return;
+      }
+
+      // CASO 2: Es un archivo personal
+      if (item.type === 'PERSONAL' || item.isPersonal === true || item.tipo === 'personal') {
+        try {
+          const fullMetadata = await storageService.getItemInfo(item.id);
+          selectedFileData = {
+            id: item.id,
+            itemId: item.id,
+            name: fullMetadata.name || item.name,
+            fileName: fullMetadata.name || item.name,
+            fileType: fullMetadata.fileType || item.fileType || '',
+            fileSize: fullMetadata.fileSize || item.fileSize || 0,
+            uploadedAt: fullMetadata.uploadedAt || item.uploadedAt || new Date().toISOString(),
+            createdAt: fullMetadata.createdAt || item.createdAt,
+            updatedAt: fullMetadata.updatedAt || item.updatedAt,
+            securityLevel: fullMetadata.securityLevel || item.securityLevel || 'PUBLIC',
+            isUnlocked: fullMetadata.isUnlocked || item.isUnlocked || false,
+            inUnlocked: fullMetadata.inUnlocked || item.inUnlocked || false,
+            isExpired: false,
+            isPersonal: true,
+            tipo: 'personal',
+            accessLevel: fullMetadata.accessLevel || item.accessLevel,
+            parentFolderId: fullMetadata.parentFolderId || item.parentFolderId,
+            hasPassword: fullMetadata.hasPassword || item.hasPassword || false,
+            smsVerificationEnabled: fullMetadata.smsVerificationEnabled || item.smsVerificationEnabled || false,
+            passwordProtected: fullMetadata.passwordProtected || item.passwordProtected || false,
+            tokenSmsProtected: fullMetadata.tokenSmsProtected || item.tokenSmsProtected || false,
+            ...fullMetadata
+          };
+        } catch (error) {
+          console.error('Error obteniendo metadata de archivo personal:', error);
+          selectedFileData = {
+            id: item.id,
+            name: item.name,
+            fileType: item.fileType || '',
+            fileSize: item.fileSize || 0,
+            isPersonal: true,
+            tipo: 'personal',
+            securityLevel: item.securityLevel || 'PUBLIC'
+          };
+        }
+      } 
+      // CASO 3: Es un archivo compartido
+      else if (item.type === 'SHARED' || item.isShared === true || item.shareId || item.tipo === 'recibido' || item.tipo === 'enviado') {
         const shareId = item.shareId || item.id;
-        const fullMetadata = await fileShareService.getFileDetails(shareId);
+        try {
+          const fullMetadata = await fileShareService.getFileDetails(shareId);
+          selectedFileData = {
+            shareId: shareId,
+            id: shareId,
+            itemId: shareId,
+            name: fullMetadata.fileName || item.name,
+            fileName: fullMetadata.fileName || item.name,
+            fileType: fullMetadata.fileType || item.fileType || '',
+            fileSize: fullMetadata.fileSize || item.fileSize || 0,
+            sharedAt: fullMetadata.sharedAt || item.sharedAt || new Date().toISOString(),
+            securityLevel: fullMetadata.securityLevel || item.securityLevel || 'PUBLIC',
+            isUnlocked: fullMetadata.isUnlocked || item.isUnlocked || false,
+            inUnlocked: fullMetadata.inUnlocked || item.inUnlocked || false,
+            isExpired: item.isExpired || false,
+            isPersonal: false,
+            tipo: item.tipo || 'recibido',
+            sharedBy: fullMetadata.sharedBy || item.sharedBy || 'Desconocido',
+            sharedWith: fullMetadata.sharedWith || item.sharedWith,
+            accessLevel: fullMetadata.accessLevel || item.accessLevel,
+            expiresAt: fullMetadata.expiresAt || item.expiresAt,
+            downloadCount: fullMetadata.downloadCount || item.downloadCount || 0,
+            viewCount: fullMetadata.viewCount || item.viewCount || 0,
+            hasPassword: fullMetadata.hasPassword || item.hasPassword || false,
+            smsVerificationEnabled: fullMetadata.smsVerificationEnabled || item.smsVerificationEnabled || false,
+            passwordProtected: fullMetadata.passwordProtected || item.passwordProtected || false,
+            tokenSmsProtected: fullMetadata.tokenSmsProtected || item.tokenSmsProtected || false,
+            ...fullMetadata
+          };
+        } catch (error) {
+          console.error('Error obteniendo metadata de archivo compartido:', error);
+          selectedFileData = {
+            shareId: shareId,
+            id: shareId,
+            name: item.name,
+            fileName: item.name,
+            fileType: item.fileType || '',
+            fileSize: item.fileSize || 0,
+            isPersonal: false,
+            tipo: item.tipo || 'recibido',
+            securityLevel: item.securityLevel || 'PUBLIC'
+          };
+        }
+      }
+      
+      // Navegar al dashboard con los datos completos
+      if (selectedFileData) {
         navigate('/dashboard', { 
           state: { 
-            selectedFile: {
-              shareId: shareId,
-              id: shareId,
-              name: fullMetadata.fileName || item.name,
-              fileName: fullMetadata.fileName || item.name,
-              fileType: fullMetadata.fileType || item.fileType,
-              fileSize: fullMetadata.fileSize || item.fileSize,
-              sharedAt: fullMetadata.sharedAt || item.sharedAt,
-              securityLevel: fullMetadata.securityLevel || item.securityLevel,
-              isUnlocked: fullMetadata.isUnlocked || item.isUnlocked,
-              isExpired: item.isExpired || false,
-              isPersonal: false,
-              tipo: 'recibido',
-              sharedBy: fullMetadata.sharedBy || item.sharedBy,
-              sharedWith: fullMetadata.sharedWith || item.sharedWith,
-              accessLevel: fullMetadata.accessLevel || item.accessLevel,
-              expiresAt: fullMetadata.expiresAt || item.expiresAt,
-              ...fullMetadata
-            }
+            selectedFile: selectedFileData,
+            fromSearch: true
           }
         });
-      } else {
-        navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
       }
     } catch (error) {
-      console.error('Error al cargar metadata del archivo:', error);
+      console.error('Error al procesar resultado de búsqueda:', error);
       navigate('/dashboard');
     } finally {
       setIsSearching(false);

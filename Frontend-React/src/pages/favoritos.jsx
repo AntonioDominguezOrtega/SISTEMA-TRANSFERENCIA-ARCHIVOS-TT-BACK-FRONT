@@ -351,23 +351,28 @@ export default function Favoritos() {
           <span style={{ fontSize: '2rem' }}>
             {getFileIcon(item.fileType, isFolder, folderColorHex)}
           </span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', display: 'flex', alignItems: 'center', color: 'white', flex: 1 }}>
+            {!isExpired && renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword, isFolder)}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+          </h3>
           {!isFolder && (
             <span style={{ 
-              fontSize: '0.7rem', 
+              fontSize: '0.65rem', 
               backgroundColor: item.accessLevel === 'DOWNLOAD' ? 'rgba(82,196,26,0.15)' : 'rgba(255,197,61,0.15)',
               padding: '4px 8px', 
               borderRadius: '4px',
-              color: item.accessLevel === 'DOWNLOAD' ? '#52c41a' : '#faad14'
+              color: item.accessLevel === 'DOWNLOAD' ? '#52c41a' : '#faad14',
+              fontWeight: '500',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}>
               {item.accessLevel === 'DOWNLOAD' ? 'Descarga' : 'Solo vista'}
             </span>
           )}
         </div>
-        
-        <h3 style={{ margin: 0, fontSize: '0.9rem', display: 'flex', alignItems: 'center', color: 'white' }}>
-          {!isExpired && renderSecurityBadge(item.securityLevel, isUnlocked, hasPassword, isFolder)}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
-        </h3>
         
         {!isFolder && (
           <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: '#888' }}>

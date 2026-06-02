@@ -204,12 +204,36 @@ const FileDetailPanel = ({
       backgroundColor: '#1D263C', 
       borderRadius: '16px', 
       border: '1px solid #0a3fff', 
-      padding: '24px', 
+      padding: isFavorite ? '32px 24px 24px 24px' : '24px',
       position: 'sticky', 
       top: '130px',
       maxHeight: 'calc(100vh - 150px)',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      position: 'relative'
     }}>
+      {/* Badge de Favorito - Esquina superior derecha */}
+      {isFavorite && !isInTrash && (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          backgroundColor: '#faad14',
+          color: '#1D263C',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '0.75rem',
+          fontWeight: '600',
+          zIndex: 10,
+          boxShadow: '0 2px 8px rgba(250, 173, 20, 0.3)'
+        }}>
+          <FaStar style={{ fontSize: '0.8rem' }} />
+          Favorito
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

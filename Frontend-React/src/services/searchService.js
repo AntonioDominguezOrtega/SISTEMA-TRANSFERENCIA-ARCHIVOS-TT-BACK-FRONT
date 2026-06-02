@@ -10,17 +10,17 @@ const authHeader = () => {
   return {};
 };
 
-// Llama al endpoint /api/search/suggest de tu Spring Boot
-const suggestFiles = (query) => {
-  return axios.get(`${API_URL}/suggest?q=${query}`, { headers: authHeader() });
-};
-
-// Llama al endpoint principal /api/search de tu Spring Boot
+// Buscar en todos los archivos del usuario
 const searchFiles = (query, type = 'all', page = 0, size = 20) => {
   return axios.get(`${API_URL}search?q=${query}&type=${type}&page=${page}&size=${size}`, { headers: authHeader() });
 };
 
+// Buscar con resultados completos que incluyan toda la metadata
+const searchFilesComplete = (query, page = 0, size = 20) => {
+  return axios.get(`${API_URL}search?q=${query}&page=${page}&size=${size}`, { headers: authHeader() });
+};
+
 export default {
-  suggestFiles,
-  searchFiles
+  searchFiles,
+  searchFilesComplete
 };
