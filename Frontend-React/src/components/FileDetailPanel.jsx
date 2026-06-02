@@ -31,6 +31,9 @@ const FileDetailPanel = ({
   const [localPassword, setLocalPassword] = useState('');
   const [showLocalPassword, setShowLocalPassword] = useState(false);
   const [panelMessage, setPanelMessage] = useState({ type: null, text: null });
+  
+  // NUEVO: Estado para bloquear inputs si se excede límite de intentos
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     if (panelMessage.text) {
@@ -140,6 +143,7 @@ const FileDetailPanel = ({
         await fileShareService.requestSmsToken(file.itemId || file.shareId);
       }
       setPanelMessage({ type: 'success', text: 'Código enviado. Revisa tu teléfono y correo.' });
+      setIsBlocked(false); // Al solicitar un nuevo token el backend limpia los intentos, liberamos el bloqueo
     } catch (err) {
       setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
     } finally {
@@ -163,11 +167,18 @@ const FileDetailPanel = ({
       }
       setPanelMessage({ type: 'success', text: 'Archivo desbloqueado correctamente' });
       setLocalTokenSms('');
+      setIsBlocked(false);
       
       await recargarArchivo();
       
     } catch (err) {
-      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
+      const errorMsg = err.response?.data?.error || err.message;
+      setPanelMessage({ type: 'error', text: errorMsg });
+      
+      // Si el backend avisa que nos pasamos de los intentos permitidos, bloqueamos la vista
+      if (errorMsg && (errorMsg.toLowerCase().includes('demasiados intentos') || errorMsg.includes('restantes: 0'))) {
+        setIsBlocked(true);
+      }
     } finally {
       setDesbloqueando(false);
     }
@@ -189,11 +200,18 @@ const FileDetailPanel = ({
       }
       setPanelMessage({ type: 'success', text: 'Archivo desbloqueado correctamente' });
       setLocalPassword('');
+      setIsBlocked(false);
       
       await recargarArchivo();
       
     } catch (err) {
-      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
+      const errorMsg = err.response?.data?.error || err.message;
+      setPanelMessage({ type: 'error', text: errorMsg });
+
+      // Si el backend avisa que nos pasamos de los intentos permitidos, bloqueamos la vista
+      if (errorMsg && (errorMsg.toLowerCase().includes('demasiados intentos') || errorMsg.includes('restantes: 0'))) {
+        setIsBlocked(true);
+      }
     } finally {
       setDesbloqueando(false);
     }
@@ -204,13 +222,36 @@ const FileDetailPanel = ({
       backgroundColor: '#1D263C', 
       borderRadius: '16px', 
       border: '1px solid #0a3fff', 
-      padding: '24px', 
+      padding: isFavorite ? '32px 24px 24px 24px' : '24px',
       position: 'sticky', 
       top: '130px',
       maxHeight: 'calc(100vh - 150px)',
-      overflowY: 'auto'
-
+      overflowY: 'auto',
+      position: 'relative'
     }}>
+      {/* Badge de Favorito - Esquina superior derecha */}
+      {isFavorite && !isInTrash && (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          backgroundColor: '#faad14',
+          color: '#1D263C',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '0.75rem',
+          fontWeight: '600',
+          zIndex: 10,
+          boxShadow: '0 2px 8px rgba(250, 173, 20, 0.3)'
+        }}>
+          <FaStar style={{ fontSize: '0.8rem' }} />
+          Favorito
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -330,7 +371,8 @@ const FileDetailPanel = ({
               </span>
             </div>
             
-            {file.securityLevel === 'TOKEN' && (
+            {/* CORRECCIÓN APLICADA: Se evaluaba "TOKEN" en lugar del string correcto "TOKEN_SMS" */}
+            {file.securityLevel === 'TOKEN_SMS' && (
               <>
                 <button 
                   onClick={handleSolicitarToken}
@@ -343,7 +385,7 @@ const FileDetailPanel = ({
                     border: '1px solid rgba(10,63,255,0.3)',
                     borderRadius: '8px', 
                     color: '#46A2FD', 
-                    cursor: 'pointer',
+                    cursor: solicitandoToken ? 'default' : 'pointer',
                     fontSize: '0.85rem',
                     opacity: solicitandoToken ? 0.6 : 1
                   }}
@@ -351,11 +393,18 @@ const FileDetailPanel = ({
                   {solicitandoToken ? 'Enviando...' : 'Solicitar código de verificación'}
                 </button>
                 
+                {isBlocked && (
+                  <div style={{ padding: '10px', backgroundColor: 'rgba(245,34,45,0.15)', border: '1px solid #f5222d', borderRadius: '8px', color: '#f5222d', fontSize: '0.85rem', marginBottom: '12px', textAlign: 'center' }}>
+                    🔒 Acceso bloqueado. Solicita un nuevo código para intentarlo de nuevo.
+                  </div>
+                )}
+                
                 <input 
                   type="text"
                   placeholder="Código de 6 dígitos"
                   value={localTokenSms}
                   onChange={(e) => setLocalTokenSms(e.target.value)}
+                  disabled={isBlocked}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -365,14 +414,15 @@ const FileDetailPanel = ({
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '8px',
                     fontSize: '0.85rem',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    opacity: isBlocked ? 0.5 : 1
                   }}
                   maxLength="6"
                 />
                 
                 <button 
                   onClick={handleVerificarToken}
-                  disabled={desbloqueando || !localTokenSms.trim()}
+                  disabled={desbloqueando || !localTokenSms.trim() || isBlocked}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -380,9 +430,9 @@ const FileDetailPanel = ({
                     border: 'none',
                     borderRadius: '8px',
                     color: 'white',
-                    cursor: 'pointer',
+                    cursor: (desbloqueando || !localTokenSms.trim() || isBlocked) ? 'default' : 'pointer',
                     fontSize: '0.85rem',
-                    opacity: (!localTokenSms.trim() || desbloqueando) ? 0.6 : 1
+                    opacity: (!localTokenSms.trim() || desbloqueando || isBlocked) ? 0.6 : 1
                   }}
                 >
                   {desbloqueando ? 'Verificando...' : 'Verificar y desbloquear'}
@@ -392,12 +442,19 @@ const FileDetailPanel = ({
             
             {file.securityLevel === 'PASSWORD' && (
               <>
+                {isBlocked && (
+                  <div style={{ padding: '10px', backgroundColor: 'rgba(245,34,45,0.15)', border: '1px solid #f5222d', borderRadius: '8px', color: '#f5222d', fontSize: '0.85rem', marginBottom: '12px', textAlign: 'center' }}>
+                    🔒 Archivo bloqueado por demasiados intentos fallidos.
+                  </div>
+                )}
+                
                 <div style={{ position: 'relative' }}>
                   <input 
                     type={showLocalPassword ? 'text' : 'password'}
                     placeholder="Contraseña del archivo"
                     value={localPassword}
                     onChange={(e) => setLocalPassword(e.target.value)}
+                    disabled={isBlocked}
                     style={{
                       width: '100%',
                       padding: '10px',
@@ -407,17 +464,18 @@ const FileDetailPanel = ({
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
                       fontSize: '0.85rem',
-                      paddingRight: '46px'
+                      paddingRight: '46px',
+                      opacity: isBlocked ? 0.5 : 1
                     }}
                   />
-                  <button type="button" onClick={() => setShowLocalPassword(p => !p)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>
+                  <button type="button" onClick={() => setShowLocalPassword(p => !p)} disabled={isBlocked} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--color-text-medium)', cursor: isBlocked ? 'default' : 'pointer', padding: 0, fontSize: '1rem', opacity: isBlocked ? 0.5 : 1 }}>
                     {showLocalPassword ? <FaEye /> : <FaEyeSlash />}
                   </button>
                 </div>
                 
                 <button 
                   onClick={handleVerificarPassword}
-                  disabled={desbloqueando || !localPassword.trim()}
+                  disabled={desbloqueando || !localPassword.trim() || isBlocked}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -425,9 +483,9 @@ const FileDetailPanel = ({
                     border: 'none',
                     borderRadius: '8px',
                     color: 'white',
-                    cursor: 'pointer',
+                    cursor: (desbloqueando || !localPassword.trim() || isBlocked) ? 'default' : 'pointer',
                     fontSize: '0.85rem',
-                    opacity: (!localPassword.trim() || desbloqueando) ? 0.6 : 1
+                    opacity: (!localPassword.trim() || desbloqueando || isBlocked) ? 0.6 : 1
                   }}
                 >
                   {desbloqueando ? 'Verificando...' : 'Desbloquear archivo'}
