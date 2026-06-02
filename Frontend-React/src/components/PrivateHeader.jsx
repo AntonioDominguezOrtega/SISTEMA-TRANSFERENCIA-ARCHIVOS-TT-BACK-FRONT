@@ -166,6 +166,7 @@ export default function PrivateHeader({ toggleSidebar }) {
     } else {
       setSearchResults([]);
       setIsSearching(false);
+      setShowResults(false);
     }
   }, [searchTerm]);
 
@@ -474,8 +475,16 @@ export default function PrivateHeader({ toggleSidebar }) {
                 className="header-search-input"
                 placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => { if(searchTerm.trim().length >= 2) setShowResults(true) }}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => { 
+                  if(searchTerm.trim().length >= 2) {
+                    setShowResults(true);
+                    setIsSearchOpen(true);
+                  }
+                }}
                 style={{ flex: 1 }}
               />
               <button type="submit" className="header-search-btn">
@@ -499,8 +508,16 @@ export default function PrivateHeader({ toggleSidebar }) {
               className="header-search-input"
               placeholder={`Buscar en ${location.pathname === '/dashboard' ? 'todo tu espacio' : 'esta sección'}...`} 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => { if(searchTerm.trim().length >= 2) setShowResults(true) }}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => { 
+                if(searchTerm.trim().length >= 2) {
+                  setShowResults(true);
+                  setIsSearchOpen(true);
+                }
+              }}
               style={{ flex: 1 }}
             />
             <button type="submit" className="header-search-btn">
