@@ -329,7 +329,7 @@ const FileDetailPanel = ({
               </span>
             </div>
             
-            {file.securityLevel === 'TOKEN_SMS' && (
+            {file.securityLevel === 'TOKEN' && (
               <>
                 <button 
                   onClick={handleSolicitarToken}

@@ -198,7 +198,6 @@ export default function RegistroUsuario() {
                     <span className="input-icon"></span>
                     <input type="text" id="nombreUsuario" className="form-control-modern" placeholder="Ej. antoni_dominguez" required value={formData.nombreUsuario} onChange={handleChange} />
                   </div>
-                  <small className="form-help" style={{ color: 'var(--color-text-medium)' }}>Este es el único dato que podrás cambiar en configuración.</small>
                 </div>
 
                 {/* Correos */}
