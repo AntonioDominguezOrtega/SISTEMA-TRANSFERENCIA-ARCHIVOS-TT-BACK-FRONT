@@ -513,28 +513,27 @@ public class StorageService {
         return "Token enviado exitosamente";
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public StorageItemResponse verifyPersonalFileToken(String fileId, String token) {
         User currentUser = getCurrentUser();
         FileShare share = getPersonalFileShare(fileId, currentUser);
 
         if (share.getSmsAttempts() >= MAX_SMS_ATTEMPTS) {
-            throw new RuntimeException("Demasiados intentos fallidos. Solicite un nuevo token");
+            throw new IllegalArgumentException("Demasiados intentos fallidos. Solicite un nuevo token");
         }
 
         if (share.getSmsTokenExpiresAt() == null ||
                 share.getSmsTokenExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("El token ha expirado");
+            throw new IllegalArgumentException("El token ha expirado");
         }
 
         if (!token.equals(share.getCurrentSmsToken())) {
             share.setSmsAttempts(share.getSmsAttempts() + 1);
             fileShareRepository.save(share);
             int left = MAX_SMS_ATTEMPTS - share.getSmsAttempts();
-            throw new RuntimeException("Token incorrecto. Intentos restantes: " + left);
+            throw new IllegalArgumentException("Token incorrecto. Intentos restantes: " + left);
         }
 
-        // Desbloquear
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
@@ -543,12 +542,10 @@ public class StorageService {
         share.setSmsAttempts(0);
         fileShareRepository.save(share);
 
-        log.info("Archivo personal desbloqueado con token: '{}'", share.getFile().getFileName());
-
         return mapToStorageResponse(share.getFile(), currentUser);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public StorageItemResponse verifyPersonalFilePassword(String fileId, String password) {
         User currentUser = getCurrentUser();
         FileShare share = getPersonalFileShare(fileId, currentUser);
@@ -559,23 +556,20 @@ public class StorageService {
 
         Integer attempts = share.getSmsAttempts() != null ? share.getSmsAttempts() : 0;
         if (attempts >= 5) {
-            throw new RuntimeException("Demasiados intentos fallidos");
+            throw new IllegalArgumentException("Demasiados intentos fallidos");
         }
 
         if (share.getPasswordHash() == null || !passwordEncoder.matches(password, share.getPasswordHash())) {
             share.setSmsAttempts(attempts + 1);
             fileShareRepository.save(share);
-            throw new RuntimeException("Contraseña incorrecta. Intentos restantes: " + (4 - attempts));
+            throw new IllegalArgumentException("Contraseña incorrecta. Intentos restantes: " + (4 - attempts));
         }
 
-        // Desbloquear
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
         share.setSmsAttempts(0);
         fileShareRepository.save(share);
-
-        log.info("Archivo personal desbloqueado con contraseña: '{}'", share.getFile().getFileName());
 
         return mapToStorageResponse(share.getFile(), currentUser);
     }

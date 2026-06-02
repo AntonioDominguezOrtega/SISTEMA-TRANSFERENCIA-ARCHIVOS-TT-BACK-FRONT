@@ -31,23 +31,19 @@ const FileDetailPanel = ({
   const [localPassword, setLocalPassword] = useState('');
   const [showLocalPassword, setShowLocalPassword] = useState(false);
   const [panelMessage, setPanelMessage] = useState({ type: null, text: null });
-  
-  // NUEVO: Estado para bloquear inputs si se excede límite de intentos
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     if (panelMessage.text) {
-      const timer = setTimeout(() => setPanelMessage({ type: null, text: null }), 3000);
+      const timer = setTimeout(() => setPanelMessage({ type: null, text: null }), 3500);
       return () => clearTimeout(timer);
     }
   }, [panelMessage]);
 
   if (!file) return null;
 
-  // Verificar si el archivo ha expirado
   const isExpired = file.expiresAt && new Date(file.expiresAt) < new Date();
 
-  // Si el archivo está expirado, mostrar un panel especial
   if (isExpired) {
     return (
       <aside style={{ 
@@ -98,22 +94,9 @@ const FileDetailPanel = ({
 
   const isUnlocked = file.isUnlocked === true || file.inUnlocked === true;
   const isPersonal = file.isPersonal === true || file.tipo === 'personal';
-  
-  // Determinar si el usuario es el propietario del archivo
   const isOwner = file.tipo === 'enviado' || file.sharedBy === 'Tú' || file.isOwner === true;
-  
-  // El propietario NO necesita desbloquear, incluso si el archivo tiene seguridad
   const needsUnlock = !isOwner && (file.securityLevel === 'PASSWORD' || file.securityLevel === 'TOKEN_SMS') && !isUnlocked;
 
-  // Debug: Ver qué datos tiene el archivo
-  console.log('📧 Datos del archivo en panel:', {
-    subject: file.subject,
-    message: file.message,
-    fileName: file.name || file.fileName,
-    tipo: file.tipo
-  });
-
-  // Función para recargar el archivo desde el backend
   const recargarArchivo = async () => {
     try {
       let refreshedFile;
@@ -143,9 +126,9 @@ const FileDetailPanel = ({
         await fileShareService.requestSmsToken(file.itemId || file.shareId);
       }
       setPanelMessage({ type: 'success', text: 'Código enviado. Revisa tu teléfono y correo.' });
-      setIsBlocked(false); // Al solicitar un nuevo token el backend limpia los intentos, liberamos el bloqueo
+      setIsBlocked(false); 
     } catch (err) {
-      setPanelMessage({ type: 'error', text: err.response?.data?.error || err.message });
+      setPanelMessage({ type: 'error', text: err.response?.data?.message || err.response?.data?.error || err.message });
     } finally {
       setSolicitandoToken(false);
     }
@@ -172,10 +155,9 @@ const FileDetailPanel = ({
       await recargarArchivo();
       
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message;
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
       setPanelMessage({ type: 'error', text: errorMsg });
       
-      // Si el backend avisa que nos pasamos de los intentos permitidos, bloqueamos la vista
       if (errorMsg && (errorMsg.toLowerCase().includes('demasiados intentos') || errorMsg.includes('restantes: 0'))) {
         setIsBlocked(true);
       }
@@ -205,10 +187,9 @@ const FileDetailPanel = ({
       await recargarArchivo();
       
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message;
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
       setPanelMessage({ type: 'error', text: errorMsg });
 
-      // Si el backend avisa que nos pasamos de los intentos permitidos, bloqueamos la vista
       if (errorMsg && (errorMsg.toLowerCase().includes('demasiados intentos') || errorMsg.includes('restantes: 0'))) {
         setIsBlocked(true);
       }
@@ -222,36 +203,13 @@ const FileDetailPanel = ({
       backgroundColor: '#1D263C', 
       borderRadius: '16px', 
       border: '1px solid #0a3fff', 
-      padding: isFavorite ? '32px 24px 24px 24px' : '24px',
+      padding: '24px', 
       position: 'sticky', 
       top: '130px',
       maxHeight: 'calc(100vh - 150px)',
-      overflowY: 'auto',
-      position: 'relative'
-    }}>
-      {/* Badge de Favorito - Esquina superior derecha */}
-      {isFavorite && !isInTrash && (
-        <div style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          backgroundColor: '#faad14',
-          color: '#1D263C',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          zIndex: 10,
-          boxShadow: '0 2px 8px rgba(250, 173, 20, 0.3)'
-        }}>
-          <FaStar style={{ fontSize: '0.8rem' }} />
-          Favorito
-        </div>
-      )}
+      overflowY: 'auto'
 
+    }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -261,7 +219,6 @@ const FileDetailPanel = ({
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
       </div>
 
-      {/* ✅ ASUNTO - Mostrar SIEMPRE al principio si existe */}
       {file.subject && (
         <div style={{ 
           backgroundColor: 'rgba(10,63,255,0.15)', 
@@ -280,7 +237,6 @@ const FileDetailPanel = ({
         </div>
       )}
 
-      {/* ✅ MENSAJE - Mostrar SIEMPRE al principio si existe */}
       {file.message && (
         <div style={{ 
           backgroundColor: 'rgba(255,255,255,0.04)', 
@@ -298,7 +254,6 @@ const FileDetailPanel = ({
         </div>
       )}
 
-      {/* Mensajes del sistema */}
       {panelMessage.text && (
         <div style={{ 
           padding: '12px', 
@@ -315,7 +270,6 @@ const FileDetailPanel = ({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {/* Icono y nombre */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', color: '#46A2FD', marginBottom: '12px' }}>
             {getFileIcon(file.fileType)}
@@ -325,7 +279,6 @@ const FileDetailPanel = ({
           </h4>
         </div>
 
-        {/* Estado de seguridad */}
         <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -334,7 +287,13 @@ const FileDetailPanel = ({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {renderSecurityBadge(file.securityLevel, isUnlocked, file.hasPassword)}
-              <span style={{ color: 'white', fontSize: '0.85rem' }}>{file.securityLevel || 'PÚBLICO'}</span>
+              
+              {/* AQUÍ ESTÁ EL CAMBIO PARA MOSTRAR "Token" EN LUGAR DE "TOKEN_SMS" */}
+              <span style={{ color: 'white', fontSize: '0.85rem' }}>
+                {file.securityLevel === 'TOKEN_SMS' ? 'Token' : 
+                 file.securityLevel === 'PASSWORD' ? 'Contraseña' : 
+                 (file.securityLevel || 'Público')}
+              </span>
             </div>
           </div>
           
@@ -361,7 +320,6 @@ const FileDetailPanel = ({
           )}
         </div>
 
-        {/* Formulario de desbloqueo - SOLO para NO propietarios */}
         {needsUnlock && !isOwner && (
           <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
@@ -371,7 +329,6 @@ const FileDetailPanel = ({
               </span>
             </div>
             
-            {/* CORRECCIÓN APLICADA: Se evaluaba "TOKEN" en lugar del string correcto "TOKEN_SMS" */}
             {file.securityLevel === 'TOKEN_SMS' && (
               <>
                 <button 
@@ -495,7 +452,6 @@ const FileDetailPanel = ({
           </div>
         )}
 
-        {/* Información y acciones */}
         {(!needsUnlock || isUnlocked || file.securityLevel === 'PUBLIC' || isOwner) && (
           <>
             <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px' }}>
@@ -545,7 +501,6 @@ const FileDetailPanel = ({
               </div>
             </div>
 
-            {/* Botón de favorito */}
             {!isInTrash && onToggleFavorite && (
               <button
                 onClick={() => onToggleFavorite()}
@@ -569,7 +524,6 @@ const FileDetailPanel = ({
               </button>
             )}
 
-            {/* Botones de acción */}
             <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
               {file.accessLevel !== 'READ_ONLY' && onDownload && (
                 <button 
@@ -615,7 +569,6 @@ const FileDetailPanel = ({
               )}
             </div>
 
-            {/* Botón mover a papelera */}
             {showTrashButton && !isInTrash && onMoveToTrash && (
               <button 
                 onClick={() => onMoveToTrash()}

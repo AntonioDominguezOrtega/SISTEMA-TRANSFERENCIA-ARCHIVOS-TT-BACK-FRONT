@@ -269,53 +269,45 @@ public class FileShareService {
      * VERIFICAR CONTRASEÑA PARA DESBLOQUEAR ARCHIVO (24 horas)
      * Similar al flujo de SMS, pero con contraseña.
      */
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public FileShareResponse verifyPassword(String shareId, String password) {
         User currentUser = getCurrentUser();
 
         FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
-        // ✅ Permitir acceso tanto al receptor como al emisor
         if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
                 !share.getSharedBy().getId().equals(currentUser.getId())) {
             throw new RuntimeException("No tienes acceso a este archivo");
         }
 
-        // Si es el emisor, no necesita desbloquear su propio archivo
         boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
         if (isOwner) {
             throw new RuntimeException("Eres el propietario del archivo, no necesitas desbloquearlo");
         }
 
-        // Validar que el archivo tenga seguridad por contraseña
         if (share.getSecurityLevel() != SecurityLevel.PASSWORD) {
             throw new RuntimeException("Este archivo no está protegido por contraseña");
         }
 
-        // Validar que el archivo siga activo
         if (!share.getIsActive() || share.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("El archivo ha expirado");
         }
 
-        // Validar intentos fallidos (máximo 5 intentos)
         Integer attempts = share.getSmsAttempts() != null ? share.getSmsAttempts() : 0;
         if (attempts >= 5) {
-            throw new RuntimeException("Demasiados intentos fallidos. Solicita un nuevo acceso al propietario");
+            throw new IllegalArgumentException("Demasiados intentos fallidos. Solicita un nuevo acceso al propietario");
         }
 
-        // Verificar contraseña
         if (share.getPasswordHash() == null || !passwordEncoder.matches(password, share.getPasswordHash())) {
-            // Incrementar intentos fallidos
             share.setSmsAttempts(attempts + 1);
             share.setSmsLastAttemptAt(LocalDateTime.now());
             fileShareRepository.save(share);
 
             int attemptsLeft = 5 - (attempts + 1);
-            throw new RuntimeException("Contraseña incorrecta. Intentos restantes: " + attemptsLeft);
+            throw new IllegalArgumentException("Contraseña incorrecta. Intentos restantes: " + attemptsLeft);
         }
 
-        // ¡CONTRASEÑA CORRECTA! -> Desbloquear por 24 horas
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
@@ -323,58 +315,47 @@ public class FileShareService {
         share.setSmsLastAttemptAt(null);
 
         FileShare updatedShare = fileShareRepository.save(share);
-
-        // Registrar en auditoría
-        logAccess(currentUser, share.getFile(), share, AccessAction.UNLOCK, true,
-                "Archivo desbloqueado con contraseña por 24 horas");
+        logAccess(currentUser, share.getFile(), share, AccessAction.UNLOCK, true, "Archivo desbloqueado con contraseña");
 
         return mapToResponse(updatedShare);
     }
 
-    /**
-     * PASO 5: El usuario ingresa los 6 dígitos y da clic en "Verificar"
-     */
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public FileShareResponse verifySmsToken(String shareId, String token) {
         User currentUser = getCurrentUser();
 
         FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Archivo no encontrado"));
 
-        // ✅ Permitir acceso tanto al receptor como al emisor
         if (!share.getSharedWith().getId().equals(currentUser.getId()) &&
                 !share.getSharedBy().getId().equals(currentUser.getId())) {
             throw new RuntimeException("No tienes acceso a este archivo");
         }
 
-        // Si es el emisor, no necesita desbloquear su propio archivo
         boolean isOwner = share.getSharedBy().getId().equals(currentUser.getId());
         if (isOwner) {
             throw new RuntimeException("Eres el propietario del archivo, no necesitas desbloquearlo");
         }
 
         if (share.getSmsAttempts() >= MAX_SMS_ATTEMPTS) {
-            throw new RuntimeException("Demasiados intentos fallidos. Solicite un nuevo token");
+            throw new IllegalArgumentException("Demasiados intentos fallidos. Solicite un nuevo token");
         }
 
         if (share.getSmsTokenExpiresAt() == null || share.getSmsTokenExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("El token ha expirado. Solicite uno nuevo");
+            throw new IllegalArgumentException("El token ha expirado. Solicite uno nuevo");
         }
 
-        // ¿El código es incorrecto?
         if (!token.equals(share.getCurrentSmsToken())) {
             share.setSmsAttempts(share.getSmsAttempts() + 1);
             share.setSmsLastAttemptAt(LocalDateTime.now());
             fileShareRepository.save(share);
 
-            logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_FAIL, false,
-                    "Token incorrecto. Intento " + share.getSmsAttempts());
+            logAccess(currentUser, share.getFile(), share, AccessAction.TOKEN_FAIL, false, "Token incorrecto");
 
             int attemptsLeft = MAX_SMS_ATTEMPTS - share.getSmsAttempts();
-            throw new RuntimeException("Token incorrecto. Intentos restantes: " + attemptsLeft);
+            throw new IllegalArgumentException("Token incorrecto. Intentos restantes: " + attemptsLeft);
         }
 
-        // ¡CÓDIGO CORRECTO! -> Desbloquear por 24 horas
         share.setIsUnlocked(true);
         share.setUnlockedAt(LocalDateTime.now());
         share.setUnlockedUntil(LocalDateTime.now().plusHours(UNLOCK_DURATION_HOURS));
@@ -383,8 +364,8 @@ public class FileShareService {
         share.setSmsAttempts(0);
 
         FileShare updateShare = fileShareRepository.save(share);
-
-        logAccess(currentUser, share.getFile(), share, AccessAction.UNLOCK, true, "Archivo desbloqueado por 24 horas");
+        logAccess(currentUser, share.getFile(), share, AccessAction.UNLOCK, true, "Archivo desbloqueado");
+        
         return mapToResponse(updateShare);
     }
 
