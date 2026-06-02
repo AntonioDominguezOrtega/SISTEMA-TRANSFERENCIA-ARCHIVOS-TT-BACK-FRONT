@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PrivateLayout from '../components/PrivateLayout';
 import { Link } from 'react-router-dom';
-import profileService from '../services/configService';
+import profileService from '../services/profileService';
 
 export default function Configuracion() {
   // Estado para los datos del formulario (los que el usuario edita)
@@ -28,8 +28,7 @@ export default function Configuracion() {
   // 1. Cargar los datos reales al entrar a la pantalla
   useEffect(() => {
     profileService.getMyProfile()
-      .then(response => {
-        const perfilReal = response.data;
+      .then(perfilReal => {
         setDatosOriginales(perfilReal);
         setFormData({
           nombreCompleto: `${perfilReal.nombre} ${perfilReal.apellido || ''}`.trim(),

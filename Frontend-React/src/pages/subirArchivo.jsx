@@ -355,8 +355,6 @@ export default function SubirArchivo() {
           to { transform: rotate(360deg); }
         }
       `}</style>
-      
-      <Footer />
     </PrivateLayout>
   );
 }

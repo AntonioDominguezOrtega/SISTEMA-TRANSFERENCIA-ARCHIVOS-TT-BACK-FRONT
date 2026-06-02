@@ -128,19 +128,23 @@ export default function ContactosUsuario() {
           </header>
 
           {/* Barra de Búsqueda de mis contactos agregados */}
-          <section className="search-section" style={{ marginTop: '2rem', marginBottom: '3rem' }}>
-            <div className="auth-card" style={{ padding: '1.2rem', display: 'flex', gap: '1rem', alignItems: 'center', backgroundColor: '#1D263C', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
+          <section className="search-section" style={{ marginTop: '2rem', marginBottom: '3rem', width: '100%' }}>
+            <div className="auth-card" style={{ width: '100%', padding: '1.2rem', display: 'flex', gap: '1rem', alignItems: 'center', backgroundColor: '#1D263C', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ flex: '1 1 82%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}>🔍</span>
                 <input 
                   type="text" 
                   placeholder="Buscar en mis contactos frecuentes..." 
                   value={busquedaMisContactos}
                   onChange={(e) => setBusquedaMisContactos(e.target.value)}
-                  style={{ width: '100%', padding: '0.8rem 0.8rem 0.8rem 2.5rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'var(--color-dark)', color: 'white', outline: 'none' }}
+                  style={{ display: 'block', width: '100%', padding: '0.8rem 0.8rem 0.8rem 2.5rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'var(--color-dark)', color: 'white', outline: 'none' }}
                 />
               </div>
-              <button className="btn btn-primary" onClick={() => setShowModalBusqueda(true)}>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setShowModalBusqueda(true)}
+                style={{ flex: '0 0 18%', minWidth: '90px', padding: '0.6rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+              >
                 + Directorio Global
               </button>
             </div>

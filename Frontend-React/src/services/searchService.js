@@ -17,7 +17,7 @@ const suggestFiles = (query) => {
 
 // Llama al endpoint principal /api/search de tu Spring Boot
 const searchFiles = (query, type = 'all', page = 0, size = 20) => {
-  return axios.get(`${API_URL}?q=${query}&type=${type}&page=${page}&size=${size}`, { headers: authHeader() });
+  return axios.get(`${API_URL}search?q=${query}&type=${type}&page=${page}&size=${size}`, { headers: authHeader() });
 };
 
 export default {

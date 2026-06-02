@@ -434,7 +434,11 @@ main {
 .notification-icon { font-size: 1.1rem; }
 .notification-item-content { flex: 1; }
 .notification-item-content p { margin: 0; font-size: 0.8rem; color: white; line-height: 1.4; }
-.notification-item-content small { font-size: 0.65rem; color: #888; display: block; margin-top: 4px; }
+.notification-item-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.notification-item-content small { font-size: 0.65rem; color: #888; display: block; }
+.notification-action-btn { border: none; background: transparent; color: #46A2FD; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 4px; font-size: 0.95rem; }
+.notification-action-btn:hover { color: #7ec5ff; }
+.notification-action-btn:focus { outline: none; }
 .notification-unread-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #46A2FD; align-self: center; }
 
 .user-menu-container { position: relative; }

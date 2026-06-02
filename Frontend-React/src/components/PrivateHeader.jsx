@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import profileService from '../services/profileService';
 import searchService from '../services/searchService';
+import storageService from '../services/storageService';
+import fileShareService from '../services/fileShareService';
 import notificationService from '../services/notificationService';
 //import websocketService from '../services/websocketService';
 
 // React Icons
 import { 
   FaBars, FaSearch, FaRegBell, FaChevronDown, FaChevronUp, 
-  FaUser, FaCog, FaSignOutAlt, FaLock, FaShieldAlt 
+  FaUser, FaCog, FaSignOutAlt, FaLock, FaShieldAlt, FaEye 
 } from 'react-icons/fa';
 
 // Helper para obtener iniciales
@@ -147,9 +149,10 @@ export default function PrivateHeader({ toggleSidebar }) {
       setShowResults(true);
 
       const delayBusqueda = setTimeout(() => {
-        searchService.suggestFiles(query)
+        searchService.searchFiles(query, 'all', 0, 20)
           .then(response => {
-            setSearchResults(response.data.suggestions || []);
+            const results = response.data.results || response.data.files || [];
+            setSearchResults(results);
             setIsSearching(false);
           })
           .catch(error => {
@@ -184,9 +187,6 @@ export default function PrivateHeader({ toggleSidebar }) {
       
       // Manejo de notificaciones
       if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        if (showNotifications && unreadCount > 0) {
-          handleMarkAllAsRead();
-        }
         setShowNotifications(false);
       }
       
@@ -214,46 +214,76 @@ export default function PrivateHeader({ toggleSidebar }) {
     }
   };
 
-  const handleResultClick = (item) => {
+  const handleResultClick = async (item) => {
     setShowResults(false);
     setSearchTerm('');
-    setIsSearchOpen(false); // Cerrar el buscador al seleccionar
+    setIsSearchOpen(false);
+    setIsSearching(true);
     
-    if (item.type === 'FOLDER') {
-      navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
-    } else if (item.type === 'PERSONAL') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            id: item.id,
-            name: item.name,
-            type: 'personal',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: false
+    try {
+      if (item.type === 'FOLDER' || item.isFolder === true) {
+        navigate(`/dashboard?carpeta=${item.id}&tab=miunidad`);
+      } else if (item.type === 'PERSONAL' || item.isPersonal === true) {
+        // Obtener metadata completa del archivo personal
+        const fullMetadata = await storageService.getItemInfo(item.id);
+        navigate('/dashboard', { 
+          state: { 
+            selectedFile: {
+              id: item.id,
+              itemId: item.id,
+              name: fullMetadata.name || item.name,
+              fileName: fullMetadata.name || item.name,
+              fileType: fullMetadata.fileType || item.fileType,
+              fileSize: fullMetadata.fileSize || item.fileSize,
+              uploadedAt: fullMetadata.uploadedAt || item.uploadedAt,
+              securityLevel: fullMetadata.securityLevel || item.securityLevel,
+              isUnlocked: fullMetadata.isUnlocked || item.isUnlocked,
+              isExpired: false,
+              isPersonal: true,
+              tipo: 'personal',
+              createdAt: fullMetadata.createdAt,
+              updatedAt: fullMetadata.updatedAt,
+              accessLevel: fullMetadata.accessLevel,
+              parentFolderId: fullMetadata.parentFolderId,
+              ...fullMetadata
+            }
           }
-        }
-      });
-    } else if (item.type === 'SHARED') {
-      navigate('/dashboard', { 
-        state: { 
-          selectedFile: {
-            shareId: item.id,
-            name: item.name,
-            type: 'shared',
-            fileType: item.fileType,
-            fileSize: item.fileSize,
-            securityLevel: item.securityLevel,
-            isUnlocked: item.isUnlocked,
-            isExpired: item.isExpired,
-            sharedBy: item.sharedBy
+        });
+      } else if (item.type === 'SHARED' || item.isShared === true || item.shareId) {
+        // Obtener metadata completa del archivo compartido
+        const shareId = item.shareId || item.id;
+        const fullMetadata = await fileShareService.getFileDetails(shareId);
+        navigate('/dashboard', { 
+          state: { 
+            selectedFile: {
+              shareId: shareId,
+              id: shareId,
+              name: fullMetadata.fileName || item.name,
+              fileName: fullMetadata.fileName || item.name,
+              fileType: fullMetadata.fileType || item.fileType,
+              fileSize: fullMetadata.fileSize || item.fileSize,
+              sharedAt: fullMetadata.sharedAt || item.sharedAt,
+              securityLevel: fullMetadata.securityLevel || item.securityLevel,
+              isUnlocked: fullMetadata.isUnlocked || item.isUnlocked,
+              isExpired: item.isExpired || false,
+              isPersonal: false,
+              tipo: 'recibido',
+              sharedBy: fullMetadata.sharedBy || item.sharedBy,
+              sharedWith: fullMetadata.sharedWith || item.sharedWith,
+              accessLevel: fullMetadata.accessLevel || item.accessLevel,
+              expiresAt: fullMetadata.expiresAt || item.expiresAt,
+              ...fullMetadata
+            }
           }
-        }
-      });
-    } else {
-      navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
+        });
+      } else {
+        navigate(`/busqueda?q=${encodeURIComponent(item.name)}`);
+      }
+    } catch (error) {
+      console.error('Error al cargar metadata del archivo:', error);
+      navigate('/dashboard');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -267,6 +297,12 @@ export default function PrivateHeader({ toggleSidebar }) {
     } catch (error) {
       console.error('Error:', error);
     }
+  };
+
+  const handleMarkNotificationAsRead = async (event, notificationId) => {
+    event.stopPropagation();
+    if (!notificationId) return;
+    await handleMarkAsRead(notificationId);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -549,7 +585,19 @@ export default function PrivateHeader({ toggleSidebar }) {
                           <span className="notification-icon">{icon}</span>
                           <div className="notification-item-content">
                             <p>{notif.message}</p>
-                            <small>{formatNotificationTime(notif.cratedAt || notif.createdAt)}</small>
+                            <div className="notification-item-meta">
+                              <small>{formatNotificationTime(notif.createdAt || notif.cratedAt || notif.date)}</small>
+                              {!notif.isRead && (
+                                <button
+                                  className="notification-action-btn"
+                                  onClick={(e) => handleMarkNotificationAsRead(e, notif.id)}
+                                  title="Marcar como vista"
+                                  type="button"
+                                >
+                                  <FaEye />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {!notif.isRead && <div className="notification-unread-dot" />}
                         </div>
