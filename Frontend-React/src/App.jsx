@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Importamos las páginas
 import Home from './pages/home'
@@ -44,23 +45,23 @@ function App() {
           <Route path="/recuperacion-contrasena" element={<RecuperacionContrasena />} />
 
           {/* Rutas Privadas */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/carpetas" element={<Carpetas />} />
-          <Route path="/notificaciones" element={<Notificaciones />} />
-          <Route path="/recientes" element={<Recientes />} />
-          <Route path="/carpeta/:id" element={<CarpetaDetalle />} />
-          <Route path="/compartidos" element={<Compartidos />} />
-          <Route path="/subir-archivo" element={<SubirArchivo />} />
-          <Route path="/archivo/:id" element={<ArchivoDetalle />} />
-          <Route path="/papelera" element={<Papelera />} />
-          <Route path="/busqueda" element={<ResultadosBusqueda />} />
-          <Route path="/perfil" element={<Perfil />} />
-          <Route path="/configuracion" element={<Configuracion />} />
-          <Route path="/contactos" element={<Contactos/>} />
-          <Route path="/ayuda-soporte" element={<AyudaSoporte />} />
-          <Route path="/favoritos" element={<Favoritos />} />
-          <Route path="/anadir-amigos" element={<anadirAmigos />} />
-          <Route path="/enviar-archivo" element={<EnviarArchivo />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/carpetas" element={<ProtectedRoute><Carpetas /></ProtectedRoute>} />
+          <Route path="/notificaciones" element={<ProtectedRoute><Notificaciones /></ProtectedRoute>} />
+          <Route path="/recientes" element={<ProtectedRoute><Recientes /></ProtectedRoute>} />
+          <Route path="/carpeta/:id" element={<ProtectedRoute><CarpetaDetalle /></ProtectedRoute>} />
+          <Route path="/compartidos" element={<ProtectedRoute><Compartidos /></ProtectedRoute>} />
+          <Route path="/subir-archivo" element={<ProtectedRoute><SubirArchivo /></ProtectedRoute>} />
+          <Route path="/archivo/:id" element={<ProtectedRoute><ArchivoDetalle /></ProtectedRoute>} />
+          <Route path="/papelera" element={<ProtectedRoute><Papelera /></ProtectedRoute>} />
+          <Route path="/busqueda" element={<ProtectedRoute><ResultadosBusqueda /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+          <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
+          <Route path="/contactos" element={<ProtectedRoute><Contactos/></ProtectedRoute>} />
+          <Route path="/ayuda-soporte" element={<ProtectedRoute><AyudaSoporte /></ProtectedRoute>} />
+          <Route path="/favoritos" element={<ProtectedRoute><Favoritos /></ProtectedRoute>} />
+          <Route path="/anadir-amigos" element={<ProtectedRoute><AnadirAmigo /></ProtectedRoute>} />
+          <Route path="/enviar-archivo" element={<ProtectedRoute><EnviarArchivo /></ProtectedRoute>} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

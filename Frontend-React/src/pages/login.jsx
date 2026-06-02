@@ -51,6 +51,14 @@ export default function Login() {
   const getErrorMessage = (error, fallback = 'Ocurrió un error.') => {
     if (!error) return fallback;
     const data = error.response?.data;
+
+    // Detectar error de base de datos (500) o mensajes que mencionen "base de datos"
+    const status = error.response?.status;
+    const lowerMsg = (data?.error || data?.message || error.message || '').toString().toLowerCase();
+    if (status === 500 || lowerMsg.includes('base de datos') || lowerMsg.includes('database') || lowerMsg.includes('data') && lowerMsg.includes('source')) {
+      return 'Error: Base de datos no disponible. Revisa el servidor.';
+    }
+
     if (data) {
       if (typeof data.error === 'string') return data.error;
       if (typeof data.Error === 'string') return data.Error;
