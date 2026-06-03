@@ -27,75 +27,70 @@
 ---
 
 ## 📝 Descripción del Proyecto
-Este proyecto es una plataforma web orientada a la **transferencia y almacenamiento seguro de archivos**. Utiliza cifrado de extremo a extremo, verificación en dos pasos (2FA) vía correo electronico y almacenamiento en la nube (Azure Blob Storage) para garantizar la integridad y confidencialidad de la información. El sistema está compuesto por una arquitectura Cliente-Servidor (React + Spring Boot).
-
-## ✨ Funciones y Secciones Principales
-
-- **🔐 Autenticación y Seguridad:** - Inicio de sesión seguro con Json Web Tokens (JWT).
-  - Verificación Multi-Factor (MFA) vía mensajes de texto (Twilio).
-  - Recuperación de contraseñas.
-- **🗂️ Gestión de Archivos y Carpetas:** - Subida, descarga y organización de archivos en carpetas.
-  - Cifrado automático de archivos antes de almacenarlos en la nube.
-- **🌐 Directorio Global y Red de Contactos:** - Búsqueda en tiempo real de usuarios registrados en la plataforma.
-  - Gestión de una lista de "Contactos Frecuentes" para envíos rápidos y seguros.
-- **👤 Perfil de Usuario:** - Personalización de datos y subida de fotografía de perfil (con Tokens SAS para privacidad).
-  - Monitoreo en tiempo real del almacenamiento utilizado en la nube.
-- **🔍 Motor de Búsqueda Inteligente:** - Búsqueda global con sugerencias en vivo de archivos propios, carpetas y elementos compartidos.
+Capara es una plataforma web orientada a la **transferencia y almacenamiento seguro de archivos**. Diseñada bajo una arquitectura Cliente-Servidor, la plataforma utiliza estándares de grado militar como **cifrado AES-256** para asegurar los datos, verificación en dos pasos (2FA) y almacenamiento escalable respaldado íntegramente por la nube de Microsoft Azure. Su objetivo principal es garantizar la integridad, disponibilidad y confidencialidad absoluta de la información de los usuarios.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## 🌐 Enlaces del Proyecto Desplegado
 
-**Frontend:**
-- [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
-- React Router DOM (Navegación)
-- Axios (Cliente HTTP)
-- CSS Puro (Diseño y animaciones)
+El proyecto se encuentra totalmente desplegado y funcional en la infraestructura de Azure:
 
-**Backend:**
-- [Java 17+](https://www.java.com/) + [Spring Boot](https://spring.io/projects/spring-boot)
-- Spring Security (Autenticación JWT)
-- Maven (Gestor de dependencias)
-
-**Infraestructura y Servicios Cloud:**
-- [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/) (Almacenamiento de archivos y fotos)
-- Base de Datos Relacional (MySQL / PostgreSQL)
+- **Plataforma Web (Frontend):** [https://yellow-cliff-06ded060f.7.azurestaticapps.net](https://yellow-cliff-06ded060f.7.azurestaticapps.net)
+- **API (Backend):** `https://capara-ebf3cygrguhfaefv.mexicocentral-01.azurewebsites.net`
+- **Base de Datos:** Azure Database for MySQL Flexible Server (`capara-bd.mysql.database.azure.com`)
+- **Almacenamiento:** Azure Blob Storage
 
 ---
 
-## 🚀 Cómo Ejecutar el Proyecto en Local
+## ✨ Características Principales
 
-Para probar el proyecto en tu entorno de desarrollo, asegúrate de tener instalados **Node.js**, **Java 17+**, y **Maven**.
+- **🔐 Autenticación y Seguridad Avanzada:** 
+  - Inicio de sesión seguro gestionado con JSON Web Tokens (JWT).
+  - Autenticación Multi-Factor (MFA) a través de correo electrónico.
+  - Bloqueo de seguridad automatizado tras exceder el límite de intentos fallidos de contraseñas o tokens.
+- **🗂️ Gestión de Archivos y Almacenamiento:** 
+  - Subida, descarga y organización jerárquica de archivos.
+  - Cifrado automático (AES-256) de extremo a extremo antes del almacenamiento en Azure Blob Storage.
+- **🌐 Directorio y Red de Contactos:** 
+  - Búsqueda de usuarios registrados en la plataforma.
+  - Libreta de "Contactos Frecuentes" para agilizar transferencias seguras.
+- **👤 Perfil y Monitoreo:** 
+  - Personalización de la cuenta y gestión segura de fotografía de perfil utilizando Tokens SAS.
+  - Monitoreo del almacenamiento en la nube y administración de planes de uso.
+- **🔍 Motor de Búsqueda Inteligente:** 
+  - Búsqueda global al vuelo con sugerencias en vivo para archivos propios, carpetas y elementos compartidos, recuperando la metadata completa de forma instantánea.
 
-### 1. Clonar el repositorio
+---
 
-git clone [[https://github.com/tu-usuario/sistema-transferencia-archivos-tt-back-front.git](https://github.com/AntonioDominguezOrtega/SISTEMA-TRANSFERENCIA-ARCHIVOS-TT-BACK-FRONT.git)]([https://github.com/tu-usuario/sistema-transferencia-archivos-tt-back-front.git](https://github.com/AntonioDominguezOrtega/SISTEMA-TRANSFERENCIA-ARCHIVOS-TT-BACK-FRONT.git))
+## 🛠️ Tecnologías e Infraestructura
 
-### 2. Configurar y levantar el Backend (Spring Boot)
-Navega a la carpeta del backend:
-```bash
-cd demo
-mvnw spring-boot:run
-```
-El servidor backend estará escuchando en http://localhost:8080.
+**Frontend (Azure Static Web Apps):**
+- ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB) ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white) 
+- React Router DOM
+- Axios
+- CSS puro para diseño fluido y animaciones
 
-### 3. Configurar y levantar el Frontend (React)
-Abre una nueva terminal y navega a la carpeta del frontend:
-```bash
-cd Frontend-React
-npm install
-npm run dev
-```
+**Backend (Azure App Service):**
+- ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
+- Java 17+ (Compatible con JDK 21)
+- Spring Security
+- Maven
 
-### 📂 Estructura del Repositorio
-```bash
+**Base de Datos y Almacenamiento (Azure):**
+- ![Azure](https://img.shields.io/badge/azure-%230072C6.svg?style=for-the-badge&logo=microsoftazure&logoColor=white) ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white) 
+- Azure Blob Storage
+- Azure Database for MySQL (`auth_sms_db`)
+---
+```bash📂 Estructura del Repositorio
+Plaintext
 📁 sistema-transferencia-archivos-tt-back-front
 ├── 📁 demo/                  # Código fuente del Backend (Spring Boot)
 │   ├── src/main/java/...     # Controladores, Servicios, Modelos, DTOs, Seguridad
-│   └── src/main/resources/   # Propiedades y Plantillas de Correo
+│   └── src/main/resources/   # Propiedades y Plantillas HTML para correos
 └── 📁 Frontend-React/        # Código fuente del Frontend (React + Vite)
     ├── src/components/       # Componentes reutilizables (Headers, Modales, Sidebar)
     ├── src/pages/            # Vistas principales (Dashboard, Perfil, Contactos)
     ├── src/services/         # Conexión con los endpoints del API (Axios)
-    └── public/               # Imágenes, Íconos y Recursos estáticos
+    └── public/               # Imágenes, Íconos y configuración de enrutamiento (Azure)
+
 ```
